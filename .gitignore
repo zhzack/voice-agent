@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Caches & Test tool outputs
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Large offline AI model weights (download separately into models/)
+models/*
+!models/.gitkeep
+*.onnx
+*.gguf
+*.pth
+*.pt
+*.safetensors
+*.ckpt
+
+# Audio generation & benchmark runtime artifacts
+app/static/generated/*
+!app/static/generated/.gitkeep
+prosody_outputs/*
+!prosody_outputs/.gitkeep
+prosody_test/*
+speakers/uploads/*
+!speakers/uploads/.gitkeep
+benchmark_results/**/*.wav
+benchmark_results/**/*.mp3
+
+# Environment & credentials
+.env
+.env.local
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*~

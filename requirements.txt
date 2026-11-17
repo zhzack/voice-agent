@@ -1,0 +1,31 @@
+# Web Framework & Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+httpx>=0.27.0
+PyYAML>=6.0.1
+SQLAlchemy>=2.0.0
+psutil>=5.9.0
+
+# Audio Processing & Live Microphone Capture
+numpy>=1.26.0
+scipy>=1.11.0
+soundfile>=0.12.1
+sounddevice>=0.4.6
+imageio-ffmpeg>=0.5.1
+
+# Speech-To-Text (SenseVoice + Silero VAD) & Offline TTS (Kokoro / Piper / MeloTTS)
+sherpa-onnx>=1.10.0
+
+# Online Neural TTS
+edge-tts>=6.1.12
+
+# Local LLM & Deep Learning (install PyTorch / ROCm matching your GPU)
+# torch
+# torchaudio
+transformers>=4.44.0
+
+# Testing
+pytest>=8.0.0

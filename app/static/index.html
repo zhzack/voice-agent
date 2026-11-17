@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceStudio - 智能语音与大语言模型一体化管理平台</title>
+    <!-- Local Offline First Vendor Libraries (100% Offline Capable) -->
+    <script src="/static/vendor/tailwindcss.js"></script>
+    <script src="/static/vendor/vue.global.prod.js"></script>
+    <script src="/static/vendor/lucide.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [v-cloak] { display: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        .wave-bar { animation: soundwave 1.2s ease-in-out infinite alternate; }
+        @keyframes soundwave {
+            0% { height: 15%; }
+            100% { height: 95%; }
+        }
+        .active-wave { animation: bouncewave 0.7s ease-in-out infinite alternate; }
+        @keyframes bouncewave {
+            0% { transform: scaleY(0.25); opacity: 0.6; }
+            100% { transform: scaleY(1.0); opacity: 1.0; }
+        }
+        .pulse-mic { animation: micring 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        @keyframes micring {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.45); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans antialiased min-h-screen">
+    <div id="app" v-cloak class="flex flex-col min-h-screen">
+        <!-- Top Navigation Bar -->
+        <header class="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <i data-lucide="radio" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">VoiceStudio</span>
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">v1.0 Pro</span>
+                        </div>
+                        <p class="text-xs text-zinc-400">大模型编排 · 多TTS语音引擎 · 客观评测系统</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="flex space-x-1 bg-zinc-800/60 p-1 rounded-xl border border-zinc-700/50">
+                    <button @click="currentTab = 'playground'" :class="tabClass('playground')">
+                        <i data-lucide="mic-2" class="w-4 h-4 mr-1.5"></i>调音工坊
+                    </button>
+                    <button @click="currentTab = 'matrix'" :class="tabClass('matrix')">
+                        <i data-lucide="users" class="w-4 h-4 mr-1.5"></i>音色矩阵
+                    </button>
+                    <button @click="currentTab = 'history'" :class="tabClass('history')">
+                        <i data-lucide="history" class="w-4 h-4 mr-1.5"></i>实验记录与标记
+                    </button>
+                    <button @click="currentTab = 'llm'" :class="tabClass('llm')">
+                        <i data-lucide="brain-circuit" class="w-4 h-4 mr-1.5"></i>大模型编排
+                    </button>
+                    <button @click="currentTab = 'benchmark'" :class="tabClass('benchmark')">
+                        <i data-lucide="award" class="w-4 h-4 mr-1.5"></i>基准评测
+                    </button>
+                    <button @click="currentTab = 'call'" :class="tabClass('call')">
+                        <i data-lucide="phone-call" class="w-4 h-4 mr-1.5"></i>实时通话
+                    </button>
+                </nav>
+
+                <!-- Hardware Telemetry -->
+                <div class="hidden lg:flex items-center space-x-3 text-xs bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg">
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-zinc-400">CPU:</span>
+                        <span class="text-zinc-200 font-mono">{{ telemetry.cpu ? telemetry.cpu.usage_percent + '%' : '...' }}</span>
+                    </div>
+                    <span class="text-zinc-700">|</span>
+                    <div class="flex items-center space-x-1.5">
+                        <span class="text-zinc-400">GPU:</span>
+                        <span class="text-indigo-400 font-medium">RX 9070 XT</span>
+                        <span class="text-zinc-500 font-mono">({{ telemetry.gpu ? telemetry.gpu.vram_allocated_gb : '0' }}/16GB)</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+            <!-- TAB 1: 调音工坊 (Playground) -->
+            <div v-if="currentTab === 'playground'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Input Panel -->
+                <div class="lg:col-span-7 space-y-5">
+                    <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-base font-semibold text-zinc-100 flex items-center">
+                                <i data-lucide="edit-3" class="w-4 h-4 mr-2 text-indigo-400"></i>文本输入与参数配置
+                            </h2>
+                            <div class="text-xs text-zinc-400">字数：{{ inputText.length }}</div>
+                        </div>
+
+                        <!-- Quick Corpus Pills -->
+                        <div>
+                            <div class="text-xs text-zinc-400 mb-2">快捷载入评测规范语料：</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="c in quickCorpus" :key="c.name" @click="inputText = c.text"
+                                    class="text-xs px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition">
+                                    {{ c.name }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Textarea & Prosody Toolbar -->
+                        <div>
+                            <!-- In-Text Prosody & Emotion Toolbar -->
+                            <div class="flex items-center justify-between text-xs pb-1.5">
+                                <div class="flex items-center space-x-1.5 text-zinc-400">
+                                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                    <span>情绪与停顿标记快捷插入：</span>
+                                </div>
+                                <button @click="showMarkupHelp = !showMarkupHelp" type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center">
+                                    <i data-lucide="help-circle" class="w-3.5 h-3.5 mr-1"></i>各模型标记语法说明
+                                </button>
+                            </div>
+
+                            <div class="flex flex-wrap gap-1.5 pb-2">
+                                <button @click="insertText('[break_500ms]')" type="button" class="text-[11px] px-2 py-0.8 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition">
+                                    ⏱️ 停顿 500ms
+                                </button>
+                                <button @click="insertText('[laugh]')" type="button" class="text-[11px] px-2 py-0.8 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition">
+                                    😄 欢笑 [laugh]
+                                </button>
+                                <button @click="insertText('[sigh]')" type="button" class="text-[11px] px-2 py-0.8 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 transition">
+                                    😮‍💨 叹气 [sigh]
+                                </button>
+                                <button @click="insertText('[uv_break]')" type="button" class="text-[11px] px-2 py-0.8 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition">
+                                    🗣️ 气口停顿
+                                </button>
+                                <button @click="insertText('——')" type="button" class="text-[11px] px-2 py-0.8 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition">
+                                    —— 破折留白
+                                </button>
+                                <button @click="insertText('……')" type="button" class="text-[11px] px-2 py-0.8 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition">
+                                    …… 沉吟省略
+                                </button>
+                            </div>
+
+                            <!-- Markup Help Drawer if toggled -->
+                            <div v-if="showMarkupHelp" class="p-3 mb-2 rounded-xl bg-zinc-950 border border-indigo-500/40 text-xs space-y-2 text-zinc-300">
+                                <div class="font-bold text-indigo-300 flex justify-between items-center border-b border-zinc-800 pb-1.5">
+                                    <span>📖 各语音合成引擎的情绪停顿标记与语法支持规范</span>
+                                    <button @click="showMarkupHelp = false" class="text-zinc-500 hover:text-zinc-300">✕</button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                                    <div class="p-2 rounded bg-zinc-900 border border-zinc-800 space-y-1">
+                                        <div class="font-bold text-amber-400">ChatTTS 潜变量模型：</div>
+                                        <div>支持内嵌 <code>[laugh]</code>(笑声)、<code>[sigh]</code>(叹气)、<code>[uv_break]</code>(清音短气口)、<code>[v_break]</code>(长呼吸)。可在下方高级参数中调节整体口语化等级。</div>
+                                    </div>
+                                    <div class="p-2 rounded bg-zinc-900 border border-zinc-800 space-y-1">
+                                        <div class="font-bold text-indigo-400">Edge-TTS (微软云端)：</div>
+                                        <div>支持 <code>[break_500ms]</code>（系统自动转为 SSML 停顿）、破折号 <code>——</code> 产生自然延长停顿，中文标点智能对齐。</div>
+                                    </div>
+                                    <div class="p-2 rounded bg-zinc-900 border border-zinc-800 space-y-1">
+                                        <div class="font-bold text-emerald-400">F5-TTS (流匹配声音克隆)：</div>
+                                        <div><strong>情绪直接继承自参考音频</strong>！参考音频是兴奋、愤怒还是耳语，合成声音自动跟随对应情绪。破折号 <code>——</code> 会产生逼真的吸气停顿。</div>
+                                    </div>
+                                    <div class="p-2 rounded bg-zinc-900 border border-zinc-800 space-y-1">
+                                        <div class="font-bold text-purple-400">Kokoro-82M / MeloTTS：</div>
+                                        <div>遵循标准中英书面韵律标点，省略号 <code>……</code> 产生沉吟停顿，分号 <code>；</code> 与逗号 <code>，</code> 产生自然层次断句。</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <textarea id="mainInputText" v-model="inputText" rows="4"
+                                placeholder="请输入想要合成为语音的文字，支持直接插入情绪与停顿标记..."
+                                class="w-full bg-zinc-950 border border-zinc-700/80 rounded-xl p-3 text-sm text-zinc-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none"></textarea>
+                        </div>
+
+                        <!-- Model & Voice Selectors -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-400 mb-1.5">语音合成引擎 (TTS Engine)</label>
+                                <select v-model="selectedEngine" @change="onEngineChange"
+                                    class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500">
+                                    <option value="edge">Edge-TTS (微软云端基准 · 14款多方言音色)</option>
+                                    <option value="kokoro">Kokoro-82M (本地轻量之王 · 82M蒸馏中英双语 · 0显存极速)</option>
+                                    <option value="piper">Piper-TTS (本地极致轻量 · 63M纯CPU ONNX · 极速离线)</option>
+                                    <option value="f5tts">F5-TTS (本地非自回归流匹配 · 零样本声音克隆)</option>
+                                    <option value="melotts">MeloTTS (本地纯离线VITS · 44.1kHz双语)</option>
+                                    <option value="chattts">ChatTTS (本地自回归潜变量 · 探索性口语)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-400 mb-1.5">发音人人声 (Voice Timbre)</label>
+                                <select v-model="selectedVoice"
+                                    class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500">
+                                    <option v-for="v in availableVoices" :key="v.id" :value="v.id">
+                                        {{ v.name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Speed & Pitch Sliders (Edge only) -->
+                        <div v-if="selectedEngine === 'edge'" class="grid grid-cols-2 gap-4 pt-2 border-t border-zinc-800">
+                            <div>
+                                <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                                    <span>语速调节 (Rate)</span>
+                                    <span class="text-indigo-400 font-mono">{{ synthParams.rate }}x</span>
+                                </div>
+                                <input type="range" min="0.5" max="1.5" step="0.05" v-model.number="synthParams.rate"
+                                    class="w-full accent-indigo-500 cursor-pointer">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                                    <span>音调调节 (Pitch)</span>
+                                    <span class="text-indigo-400 font-mono">{{ synthParams.pitch }}Hz</span>
+                                </div>
+                                <input type="range" min="-20" max="20" step="1" v-model.number="synthParams.pitch"
+                                    class="w-full accent-indigo-500 cursor-pointer">
+                            </div>
+                        </div>
+
+                        <!-- MeloTTS Speed Slider -->
+                        <div v-if="selectedEngine === 'melotts'" class="pt-2 border-t border-zinc-800">
+                            <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                                <span>语速调节 (MeloTTS Speed)</span>
+                                <span class="text-indigo-400 font-mono">{{ synthParams.rate }}x</span>
+                            </div>
+                            <input type="range" min="0.6" max="1.8" step="0.1" v-model.number="synthParams.rate"
+                                class="w-full accent-indigo-500 cursor-pointer">
+                        </div>
+
+                        <!-- Kokoro Speed Slider -->
+                        <div v-if="selectedEngine === 'kokoro'" class="pt-2 border-t border-zinc-800">
+                            <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                                <span>语速调节 (Kokoro Speed)</span>
+                                <span class="text-indigo-400 font-mono">{{ synthParams.rate }}x</span>
+                            </div>
+                            <input type="range" min="0.5" max="2.0" step="0.1" v-model.number="synthParams.rate"
+                                class="w-full accent-indigo-500 cursor-pointer">
+                        </div>
+
+                        <!-- Piper Speed Slider -->
+                        <div v-if="selectedEngine === 'piper'" class="pt-2 border-t border-zinc-800">
+                            <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                                <span>语速调节 (Piper Length Scale)</span>
+                                <span class="text-indigo-400 font-mono">{{ synthParams.rate }}x</span>
+                            </div>
+                            <input type="range" min="0.5" max="2.0" step="0.1" v-model.number="synthParams.rate"
+                                class="w-full accent-indigo-500 cursor-pointer">
+                        </div>
+
+                        <!-- ChatTTS Temperature & Tone Controls -->
+                        <div v-if="selectedEngine === 'chattts'" class="grid grid-cols-2 gap-4 pt-2 border-t border-zinc-800">
+                            <div>
+                                <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                                    <span>随机发音多样性 (Temperature)</span>
+                                    <span class="text-indigo-400 font-mono">{{ synthParams.temperature }}</span>
+                                </div>
+                                <input type="range" min="0.1" max="0.7" step="0.05" v-model.number="synthParams.temperature"
+                                    class="w-full accent-indigo-500 cursor-pointer">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-zinc-400 mb-1">
+                                    <span>采样过滤阈值 (Top-P)</span>
+                                    <span class="text-indigo-400 font-mono">{{ synthParams.top_p }}</span>
+                                </div>
+                                <input type="range" min="0.5" max="0.9" step="0.05" v-model.number="synthParams.top_p"
+                                    class="w-full accent-indigo-500 cursor-pointer">
+                            </div>
+                        </div>
+
+                        <!-- F5-TTS Zero-shot Voice Cloning Box -->
+                        <div v-if="selectedEngine === 'f5tts'" class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-800/40 space-y-3 pt-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2 text-xs font-semibold text-indigo-300">
+                                    <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
+                                    <span>零样本声音克隆参考源 (Reference Audio)</span>
+                                </div>
+                                <span class="text-[10px] text-zinc-400">仅需 3~5 秒参考音频即可克隆任意音色</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <label class="block text-zinc-400 mb-1">上传您的声音文件 (.wav/.mp3/.m4a)：</label>
+                                    <input type="file" @change="handleFileUpload" accept="audio/*"
+                                        class="block w-full text-xs text-zinc-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
+                                </div>
+                                <div>
+                                    <label class="block text-zinc-400 mb-1">或者麦克风录制：</label>
+                                    <div class="flex items-center space-x-2">
+                                        <button @click="toggleRecording" type="button"
+                                            :class="isRecording ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'"
+                                            class="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition">
+                                            <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                                            <span>{{ isRecording ? '停止录音并上传...' : '点击录制 3 秒' }}</span>
+                                        </button>
+                                        <span v-if="uploadedAudioName" class="text-emerald-400 text-[11px] truncate max-w-[140px]">
+                                            ✓ {{ uploadedAudioName }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reference Text auto-recognized by SenseVoice -->
+                            <div v-if="customRefAudio" class="pt-2 border-t border-indigo-800/30">
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="text-zinc-400">参考音频中的台词 (SenseVoice 已自动识别，可核对修改)：</span>
+                                    <span class="text-emerald-400 font-mono text-[10px]">自动对齐识别成功</span>
+                                </div>
+                                <input type="text" v-model="customRefText" placeholder="参考音频中说的那句话..."
+                                    class="w-full bg-zinc-950 border border-indigo-700/60 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <!-- Collapsible Advanced Hyperparameters Panel -->
+                        <div class="pt-2 border-t border-zinc-800">
+                            <button @click="showAdvancedParams = !showAdvancedParams" type="button"
+                                class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center justify-between w-full py-1">
+                                <span class="flex items-center space-x-1.5 font-medium">
+                                    <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+                                    <span>模型专属深度声学调优参数 ({{ showAdvancedParams ? '收起' : '展开' }})</span>
+                                </span>
+                                <i :data-lucide="showAdvancedParams ? 'chevron-up' : 'chevron-down'" class="w-4 h-4"></i>
+                            </button>
+
+                            <div v-if="showAdvancedParams" class="p-3.5 mt-2 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
+                                <!-- F5-TTS Deep Hyperparameters -->
+                                <div v-if="selectedEngine === 'f5tts'" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                    <div>
+                                        <div class="flex justify-between text-zinc-400 mb-1">
+                                            <span>ODE去噪步数 (NFE)</span>
+                                            <span class="text-indigo-400 font-mono font-bold">{{ synthParams.nfe_step }}步</span>
+                                        </div>
+                                        <input type="range" min="16" max="64" step="4" v-model.number="synthParams.nfe_step" class="w-full accent-indigo-500 cursor-pointer">
+                                        <div class="text-[10px] text-zinc-500 mt-0.5">步数越高细节越丰富 (默认32)</div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-zinc-400 mb-1">
+                                            <span>CFG 引导强度</span>
+                                            <span class="text-indigo-400 font-mono font-bold">{{ synthParams.cfg_strength }}</span>
+                                        </div>
+                                        <input type="range" min="1.0" max="3.5" step="0.1" v-model.number="synthParams.cfg_strength" class="w-full accent-indigo-500 cursor-pointer">
+                                        <div class="text-[10px] text-zinc-500 mt-0.5">克隆声线遵循严谨度 (默认2.0)</div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-zinc-400 mb-1">
+                                            <span>Sway 采样系数</span>
+                                            <span class="text-indigo-400 font-mono font-bold">{{ synthParams.sway_sampling_coef }}</span>
+                                        </div>
+                                        <input type="range" min="-1.0" max="1.0" step="0.1" v-model.number="synthParams.sway_sampling_coef" class="w-full accent-indigo-500 cursor-pointer">
+                                        <div class="text-[10px] text-zinc-500 mt-0.5">采样步长分布 (默认-1.0)</div>
+                                    </div>
+                                </div>
+
+                                <!-- ChatTTS Deep Hyperparameters -->
+                                <div v-if="selectedEngine === 'chattts'" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                    <div>
+                                        <div class="flex justify-between text-zinc-400 mb-1">
+                                            <span>口语化程度 (Oral)</span>
+                                            <span class="text-amber-400 font-mono font-bold">等级 {{ synthParams.oral }}</span>
+                                        </div>
+                                        <input type="range" min="0" max="9" step="1" v-model.number="synthParams.oral" class="w-full accent-amber-500 cursor-pointer">
+                                        <div class="text-[10px] text-zinc-500 mt-0.5">0为严谨书面，9为极度日常口语</div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-zinc-400 mb-1">
+                                            <span>欢笑语气 (Laugh)</span>
+                                            <span class="text-amber-400 font-mono font-bold">等级 {{ synthParams.laugh }}</span>
+                                        </div>
+                                        <input type="range" min="0" max="9" step="1" v-model.number="synthParams.laugh" class="w-full accent-amber-500 cursor-pointer">
+                                        <div class="text-[10px] text-zinc-500 mt-0.5">欢快语调与融入轻笑概率</div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-zinc-400 mb-1">
+                                            <span>停顿呼吸等级 (Break)</span>
+                                            <span class="text-amber-400 font-mono font-bold">等级 {{ synthParams.break_level }}</span>
+                                        </div>
+                                        <input type="range" min="0" max="9" step="1" v-model.number="synthParams.break_level" class="w-full accent-amber-500 cursor-pointer">
+                                        <div class="text-[10px] text-zinc-500 mt-0.5">控制句子间换气与停顿时长</div>
+                                    </div>
+                                </div>
+
+                                <!-- Global Volume -->
+                                <div class="pt-2 border-t border-zinc-800/80 text-xs flex items-center justify-between">
+                                    <span class="text-zinc-400">输出声学增益 (Volume): <strong class="text-zinc-200 font-mono">{{ synthParams.volume }}x</strong></span>
+                                    <input type="range" min="0.5" max="1.5" step="0.05" v-model.number="synthParams.volume" class="w-48 accent-indigo-500 cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Verification Checkbox & Action Button -->
+                        <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-zinc-800">
+                            <label class="flex items-center space-x-2 text-xs text-zinc-300 cursor-pointer">
+                                <input type="checkbox" v-model="verifyASR" class="rounded bg-zinc-800 border-zinc-700 text-indigo-600 focus:ring-0">
+                                <span>联动 SenseVoice 自动进行 ASR 准确率客观评测</span>
+                            </label>
+                            <div class="flex items-center space-x-2">
+                                <button v-if="latestResult && !isGenerating" @click="playLatestAudio" type="button"
+                                    class="px-3.5 py-2.5 rounded-xl font-medium text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 hover:bg-emerald-900/60 flex items-center space-x-1.5 transition">
+                                    <i data-lucide="volume-2" class="w-4 h-4 text-emerald-400"></i>
+                                    <span>播放音频</span>
+                                </button>
+                                <button @click="generateSpeech" :disabled="isGenerating || !inputText.trim()"
+                                    class="px-5 py-2.5 rounded-xl font-medium text-sm text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-lg shadow-indigo-600/30 transition">
+                                    <i v-if="isGenerating" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                    <i v-else data-lucide="play" class="w-4 h-4 fill-current"></i>
+                                    <span>{{ isGenerating ? '正在极速合成...' : '立即生成语音' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Audio & Accuracy Panel -->
+                <div class="lg:col-span-5 space-y-5">
+                    <!-- Audio Player Card -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-base font-semibold text-zinc-100 flex items-center">
+                                <i data-lucide="volume-2" class="w-4 h-4 mr-2 text-indigo-400"></i>音频试听与波形可视化
+                            </h2>
+                            <div v-if="latestResult" class="flex items-center space-x-2 text-xs">
+                                <span v-if="isPlaying" class="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px]">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                                    <span>播放中 ({{ playbackRate }}x)</span>
+                                </span>
+                                <span v-else class="text-[10px] text-zinc-500 font-mono">就绪</span>
+                            </div>
+                        </div>
+
+                        <!-- STATE A: Real-time Active Generation Monitor (Shown when isGenerating is true) -->
+                        <div v-if="isGenerating" class="space-y-4">
+                            <!-- Glowing Active Header & Timer -->
+                            <div class="flex items-center justify-between p-3.5 bg-indigo-950/40 border border-indigo-500/40 rounded-xl">
+                                <div class="flex items-center space-x-3">
+                                    <div class="relative flex items-center justify-center">
+                                        <div class="w-3.5 h-3.5 rounded-full bg-indigo-500 animate-ping absolute"></div>
+                                        <div class="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-indigo-200 flex items-center">
+                                            <span>正在调用 {{ selectedEngine.toUpperCase() }} 极速推理中</span>
+                                            <span class="ml-2 px-1.5 py-0.2 text-[10px] rounded bg-indigo-500/20 text-indigo-300 font-mono">运行中</span>
+                                        </div>
+                                        <div class="text-[11px] text-zinc-400 mt-0.5">{{ generationStageText }}</div>
+                                    </div>
+                                </div>
+                                <div class="px-3 py-1 rounded-lg bg-zinc-900 border border-indigo-500/50 text-indigo-300 font-mono text-xs font-bold flex items-center space-x-1.5 shadow-lg shadow-indigo-500/10">
+                                    <i data-lucide="timer" class="w-3.5 h-3.5 animate-spin"></i>
+                                    <span>{{ generationTimer.toFixed(1) }}s</span>
+                                </div>
+                            </div>
+
+                            <!-- Animated Computing Waveform -->
+                            <div class="h-20 bg-zinc-950 rounded-xl p-3 flex items-center justify-center space-x-1 border border-indigo-500/30">
+                                <div v-for="i in 36" :key="i" class="w-1 bg-gradient-to-t from-indigo-600 via-purple-500 to-pink-400 rounded-full wave-bar"
+                                    :style="{ animationDuration: (0.35 + (i % 6) * 0.12) + 's', animationDelay: (i * 0.03) + 's' }"></div>
+                            </div>
+
+                            <!-- 4-Stage Step Pipeline -->
+                            <div class="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+                                <div :class="generationStage >= 1 ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-zinc-800 bg-zinc-950 text-zinc-500'"
+                                    class="border p-1.5 rounded-lg font-medium transition">
+                                    1. 文本规范化
+                                </div>
+                                <div :class="generationStage >= 2 ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-zinc-800 bg-zinc-950 text-zinc-500'"
+                                    class="border p-1.5 rounded-lg font-medium transition">
+                                    2. 硬件调度
+                                </div>
+                                <div :class="generationStage >= 3 ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200 animate-pulse font-bold' : 'border-zinc-800 bg-zinc-950 text-zinc-500'"
+                                    class="border p-1.5 rounded-lg font-medium transition">
+                                    3. 声学模型推理
+                                </div>
+                                <div :class="generationStage >= 4 ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300' : 'border-zinc-800 bg-zinc-950 text-zinc-500'"
+                                    class="border p-1.5 rounded-lg font-medium transition">
+                                    4. ASR 真实校验
+                                </div>
+                            </div>
+
+                            <!-- Real-time Inference Logs Console -->
+                            <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 space-y-1 text-[11px] font-mono h-28 overflow-y-auto">
+                                <div v-for="(log, idx) in generationLogs" :key="idx" class="flex items-start space-x-2">
+                                    <span class="text-zinc-600 select-none">[{{ log.time }}]</span>
+                                    <span :class="log.level === 'success' ? 'text-emerald-400' : (log.level === 'warn' ? 'text-yellow-400' : 'text-zinc-300')">
+                                        {{ log.msg }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STATE B: Active Audio Player & Dynamic Waveform Visualizer -->
+                        <div v-else-if="latestResult" class="space-y-4">
+                            <!-- Soundwave Card & Scrub Track -->
+                            <div class="relative bg-zinc-950 p-4 rounded-xl border border-zinc-800/90 space-y-3 cursor-pointer group"
+                                 @click="seekAudio($event)">
+                                
+                                <!-- Meta bar: Engine + Time progress -->
+                                <div class="flex justify-between items-center text-xs text-zinc-400">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold">
+                                            {{ (latestResult.engine || selectedEngine).toUpperCase() }}
+                                        </span>
+                                        <span class="text-zinc-300 font-medium text-[11px]">{{ latestResult.voice_id || selectedVoice }}</span>
+                                    </div>
+                                    <div class="font-mono text-zinc-300 font-semibold text-xs">
+                                        {{ formatTime(audioCurrentTime) }} / {{ formatTime(latestResult.duration || audioDuration) }}
+                                    </div>
+                                </div>
+
+                                <!-- 48-Bar Dynamic Reactive Waveform -->
+                                <div class="h-20 flex items-center justify-between gap-1 select-none py-1">
+                                    <div v-for="(amp, idx) in waveformBars" :key="idx"
+                                         class="flex-1 rounded-full transition-all duration-150 origin-bottom"
+                                         :class="[
+                                            (idx / waveformBars.length) <= (audioCurrentTime / (audioDuration || latestResult.duration || 1))
+                                                ? 'bg-gradient-to-t from-emerald-500 to-indigo-400 shadow-sm shadow-emerald-500/30'
+                                                : 'bg-zinc-800 hover:bg-zinc-700',
+                                            isPlaying ? 'active-wave' : ''
+                                         ]"
+                                         :style="{
+                                            height: (amp * (isPlaying ? 0.95 : 0.8)) + '%',
+                                            animationDelay: (idx * 0.025) + 's'
+                                         }">
+                                    </div>
+                                </div>
+
+                                <!-- Scrubber Progress Bar -->
+                                <div class="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="bg-gradient-to-r from-emerald-500 to-indigo-500 h-full rounded-full transition-all duration-75"
+                                         :style="{ width: ((audioCurrentTime / (audioDuration || latestResult.duration || 1)) * 100) + '%' }">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Playback Controls -->
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center space-x-2">
+                                    <button @click="togglePlay" type="button"
+                                            :class="isPlaying ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'"
+                                            class="px-4 py-2.5 rounded-xl font-bold text-xs text-white shadow-lg transition flex items-center space-x-2">
+                                        <i data-lucide="play" v-if="!isPlaying" class="w-4 h-4 fill-current"></i>
+                                        <i data-lucide="pause" v-else class="w-4 h-4 fill-current"></i>
+                                        <span>{{ isPlaying ? '暂停播放' : '点击试听' }}</span>
+                                    </button>
+                                    <button @click="restartAudio" type="button" class="p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition" title="从头播放">
+                                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Speed & Download -->
+                                <div class="flex items-center space-x-1.5 text-xs">
+                                    <button v-for="rate in [1.0, 1.25, 1.5]" :key="rate" @click="setPlaybackRate(rate)"
+                                            :class="playbackRate === rate ? 'bg-indigo-600 text-white font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'"
+                                            class="px-2 py-1 rounded-lg border border-zinc-700/60 font-mono transition">
+                                        {{ rate }}x
+                                    </button>
+                                    <a :href="latestResult.audio_url" :download="'VoiceStudio_' + latestResult.id + '.wav'"
+                                       class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition ml-1" title="下载音频文件">
+                                        <i data-lucide="download" class="w-4 h-4"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Native Audio Element with Direct Bindings -->
+                            <audio ref="audioElement"
+                                   :src="latestResult.audio_url"
+                                   @play="onAudioPlay"
+                                   @pause="onAudioPause"
+                                   @timeupdate="onTimeUpdate"
+                                   @ended="onAudioEnded"
+                                   @loadedmetadata="onAudioLoaded"
+                                   controls
+                                   class="w-full rounded-xl bg-zinc-950 border border-zinc-800">
+                            </audio>
+
+                            <!-- Performance Metrics -->
+                            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                                <div class="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800">
+                                    <div class="text-zinc-500">音频时长</div>
+                                    <div class="text-zinc-200 font-mono font-semibold mt-0.5">{{ latestResult.duration }}s</div>
+                                </div>
+                                <div class="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800">
+                                    <div class="text-zinc-500">生成耗时</div>
+                                    <div class="text-zinc-200 font-mono font-semibold mt-0.5">{{ latestResult.cost_sec }}s</div>
+                                </div>
+                                <div class="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800">
+                                    <div class="text-zinc-500">实时率 (RTF)</div>
+                                    <div class="text-emerald-400 font-mono font-semibold mt-0.5">{{ latestResult.rtf }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STATE C: Idle Standby State (fallback) -->
+                        <div v-else class="h-44 flex flex-col items-center justify-center text-zinc-500 text-sm border-2 border-dashed border-zinc-800 rounded-xl">
+                            <i data-lucide="music" class="w-8 h-8 mb-2 stroke-1"></i>
+                            <span>正在载入音频样本...</span>
+                        </div>
+                    </div>
+
+                    <!-- Objective ASR Verification Report -->
+                    <div v-if="latestResult && latestResult.accuracy_report" class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-base font-semibold text-zinc-100 flex items-center">
+                                <i data-lucide="shield-check" class="w-4 h-4 mr-2 text-emerald-400"></i>SenseVoice 客观评测校验
+                            </h2>
+                            <span :class="accuracyBadgeClass(latestResult.accuracy_report.accuracy)">
+                                准确率: {{ latestResult.accuracy_report.accuracy }}%
+                            </span>
+                        </div>
+
+                        <div class="space-y-2.5 text-xs">
+                            <div class="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1.5">
+                                <div class="text-zinc-500 flex items-center">
+                                    <i data-lucide="file-text" class="w-3.5 h-3.5 mr-1 text-zinc-400"></i>期望文本 (Reference):
+                                </div>
+                                <div class="text-zinc-300 font-medium pl-4">{{ latestResult.accuracy_report.expected_text }}</div>
+                            </div>
+                            <div class="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-1.5">
+                                <div class="text-zinc-500 flex items-center">
+                                    <i data-lucide="headphones" class="w-3.5 h-3.5 mr-1 text-indigo-400"></i>ASR 识别结果 (Hypothesis):
+                                </div>
+                                <div class="text-zinc-100 font-medium pl-4">{{ latestResult.accuracy_report.recognized_text }}</div>
+                            </div>
+                            <div class="flex justify-between items-center text-zinc-400 px-1 pt-1">
+                                <span>字符错误率 (CER): <strong class="text-zinc-200">{{ latestResult.accuracy_report.cer * 100 }}%</strong></span>
+                                <span>评定结论: <strong class="text-emerald-400">{{ latestResult.accuracy_report.status }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: 音色矩阵库 (Timbre Matrix) -->
+            <div v-if="currentTab === 'matrix'" class="space-y-6">
+                <!-- Header & Filters -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900 border border-zinc-800 p-4 rounded-2xl">
+                    <div>
+                        <h2 class="text-lg font-bold text-zinc-100">全部人声音色矩阵 ({{ filteredVoices.length }} 款)</h2>
+                        <p class="text-xs text-zinc-400">涵盖普通话旗舰、方言特色（东北/陕西/台湾/粤语）及国际英语，支持秒级免下载在线试听</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="f in voiceFilters" :key="f.key" @click="activeVoiceFilter = f.key"
+                            :class="activeVoiceFilter === f.key ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'"
+                            class="text-xs px-3 py-1.5 rounded-lg font-medium transition">
+                            {{ f.label }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Voice Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-for="voice in filteredVoices" :key="voice.id"
+                        class="bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-5 shadow-lg transition flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 class="font-semibold text-sm text-zinc-100">{{ voice.name }}</h3>
+                                        <span v-if="voice.is_default" class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">默认</span>
+                                    </div>
+                                    <div class="text-xs text-zinc-500 font-mono mt-0.5">{{ voice.id }} · {{ voice.engine.toUpperCase() }}</div>
+                                </div>
+                                <span class="px-2 py-0.5 text-xs rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700/60">
+                                    {{ voice.gender === 'male' ? '男声' : '女声' }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-zinc-400 mt-2.5 leading-relaxed">{{ voice.desc }}</p>
+                            <div class="flex flex-wrap gap-1 mt-3">
+                                <span v-for="tag in voice.tags" :key="tag" class="text-[10px] px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/40">
+                                    {{ tag }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Audio Playback Pill -->
+                        <div class="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between">
+                            <button @click="playVoiceSample(voice)" class="text-xs flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">
+                                <i data-lucide="play-circle" class="w-4 h-4 text-indigo-400"></i>
+                                <span>在线试听</span>
+                            </button>
+                            <button @click="applyVoice(voice)" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+                                选用此音色 →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: 实验历史与标记 (Synthesis History & Tags) -->
+            <div v-if="currentTab === 'history'" class="space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900 border border-zinc-800 p-4 rounded-2xl">
+                    <div>
+                        <h2 class="text-lg font-bold text-zinc-100 flex items-center">
+                            <i data-lucide="history" class="w-5 h-5 mr-2 text-indigo-400"></i>语音生成实验记录与音质评定 ({{ historyList.length }} 条记录)
+                        </h2>
+                        <p class="text-xs text-zinc-400">完整记录每次生成的提示文本、声学参数、RTF 耗时与 SenseVoice 客观准确率，支持一键复用与打星标记</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button @click="historyFilter = 'all'"
+                            :class="historyFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'"
+                            class="text-xs px-3 py-1.5 rounded-lg font-medium transition">
+                            全部 ({{ historyList.length }})
+                        </button>
+                        <button @click="historyFilter = 'call'"
+                            :class="historyFilter === 'call' ? 'bg-emerald-600 text-white font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'"
+                            class="text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center space-x-1">
+                            <i data-lucide="phone-call" class="w-3.5 h-3.5 text-emerald-300"></i>
+                            <span>通话记录 ({{ callRecordCount }})</span>
+                        </button>
+                        <button @click="historyFilter = 'playground'"
+                            :class="historyFilter === 'playground' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'"
+                            class="text-xs px-3 py-1.5 rounded-lg font-medium transition">
+                            调音工坊
+                        </button>
+                        <button @click="favoriteOnly = !favoriteOnly; fetchHistory()"
+                            :class="favoriteOnly ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-zinc-800 text-zinc-300 border-zinc-700'"
+                            class="text-xs px-3 py-1.5 rounded-lg border font-medium flex items-center space-x-1.5 transition">
+                            <i data-lucide="star" :class="favoriteOnly ? 'fill-amber-400 text-amber-400' : 'text-zinc-400'" class="w-3.5 h-3.5"></i>
+                            <span>{{ favoriteOnly ? '显示全部' : '仅看收藏' }}</span>
+                        </button>
+                        <button @click="fetchHistory()" class="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-medium transition">
+                            刷新记录
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History Cards Table / List -->
+                <div class="space-y-3">
+                    <div v-for="item in filteredHistoryList" :key="item.id"
+                        class="bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-4 shadow-lg transition space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <button @click="toggleFavorite(item)" class="text-zinc-500 hover:text-amber-400 transition" title="收藏/取消收藏">
+                                    <i data-lucide="star" :class="item.is_favorite ? 'fill-amber-400 text-amber-400' : 'text-zinc-500'" class="w-4 h-4"></i>
+                                </button>
+                                <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                    {{ item.engine.toUpperCase() }}
+                                </span>
+                                <span v-if="item.params && item.params.mode && item.params.mode.startsWith('call')" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                    实时通话
+                                </span>
+                                <span class="text-xs font-semibold text-zinc-200">{{ item.voice_name }}</span>
+                                <span class="text-[11px] text-zinc-500 font-mono">{{ item.time_str }}</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-xs">
+                                <span v-if="item.accuracy !== null" :class="accuracyBadgeClass(item.accuracy)" class="text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                    ASR 准确率: {{ item.accuracy }}%
+                                </span>
+                                <span class="text-zinc-400 font-mono text-[11px]">时长 {{ item.duration }}s | 耗时 {{ item.cost_sec }}s | RTF {{ item.rtf }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Dialogue Content (User + Assistant) if call, or simple text -->
+                        <div v-if="item.params && (item.params.user_text || (item.params.mode && item.params.mode.startsWith('call')))" class="space-y-1.5 bg-zinc-950/80 p-3 rounded-xl border border-zinc-800/80">
+                            <div class="text-xs text-indigo-300 font-medium flex items-start space-x-2">
+                                <span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-bold shrink-0 mt-0.5">🗣️ 用户提问</span>
+                                <span class="select-all leading-relaxed">{{ item.params.user_text || '（语音提问）' }}</span>
+                            </div>
+                            <div class="text-xs text-emerald-300 font-medium flex items-start space-x-2 pt-1.5 border-t border-zinc-800/60">
+                                <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold shrink-0 mt-0.5">🤖 助手回答</span>
+                                <span class="select-all leading-relaxed text-zinc-100">{{ item.text }}</span>
+                            </div>
+                        </div>
+                        <div v-else class="text-xs text-zinc-200 font-medium bg-zinc-950 p-2.5 rounded-xl border border-zinc-800/60 select-all leading-relaxed">
+                            {{ item.text }}
+                        </div>
+
+                        <!-- Parameters Pill and User Tags -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px]">
+                            <!-- Parameter badges -->
+                            <div class="flex flex-wrap items-center gap-1.5 text-zinc-400">
+                                <span class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">语速: {{ item.params.rate || 1.0 }}x</span>
+                                <span v-if="item.params.pitch" class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">音调: {{ item.params.pitch }}Hz</span>
+                                <span v-if="item.params.nfe_step" class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">NFE: {{ item.params.nfe_step }}步</span>
+                                <span v-if="item.params.cfg_strength" class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">CFG: {{ item.params.cfg_strength }}</span>
+                                <span v-if="item.params.temperature" class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">Temp: {{ item.params.temperature }}</span>
+                                <span v-if="item.params.oral" class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">Oral: {{ item.params.oral }}</span>
+                            </div>
+
+                            <!-- Action Controls: Play, Reuse Params, Notes, Delete -->
+                            <div class="flex items-center space-x-2">
+                                <button @click="playHistoryAudio(item)"
+                                    class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center space-x-1 transition">
+                                    <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                                    <span>试听</span>
+                                </button>
+                                <button @click="restoreParams(item)"
+                                    class="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-indigo-300 border border-zinc-700 font-medium flex items-center space-x-1 transition">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                    <span>复用参数</span>
+                                </button>
+                                <button @click="promptEditNote(item)"
+                                    class="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 font-medium flex items-center space-x-1 transition">
+                                    <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                                    <span>{{ item.user_notes ? '备注: ' + item.user_notes.slice(0, 8) + '...' : '添加备注' }}</span>
+                                </button>
+                                <button @click="deleteHistoryRecord(item)" class="text-zinc-500 hover:text-red-400 p-1 transition" title="删除记录">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="historyList.length === 0" class="p-12 text-center text-zinc-500 text-sm border-2 border-dashed border-zinc-800 rounded-2xl">
+                        暂无生成实验记录，在调音工坊中生成语音后将自动归档至此。
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: 大模型编排 (LLM Hub) -->
+            <div v-if="currentTab === 'llm'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left LLM Settings -->
+                <div class="lg:col-span-5 space-y-5">
+                    <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+                        <h2 class="text-base font-semibold text-zinc-100 flex items-center">
+                            <i data-lucide="cpu" class="w-4 h-4 mr-2 text-indigo-400"></i>大语言模型渠道配置
+                        </h2>
+
+                        <div class="space-y-3">
+                            <div v-for="prov in llmProviders" :key="prov.id" @click="selectedLLMProvider = prov.id"
+                                :class="selectedLLMProvider === prov.id ? 'border-indigo-500 bg-indigo-500/5' : 'border-zinc-800 bg-zinc-950/60'"
+                                class="border p-4 rounded-xl cursor-pointer transition">
+                                <div class="flex items-center justify-between">
+                                    <div class="font-medium text-sm text-zinc-200">{{ prov.name }}</div>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400">{{ prov.device }}</span>
+                                </div>
+                                <p class="text-xs text-zinc-400 mt-1.5">{{ prov.desc }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Cloudflare Settings if selected -->
+                        <div v-if="selectedLLMProvider === 'cloudflare'" class="space-y-3 pt-3 border-t border-zinc-800">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-400 mb-1">Cloudflare Account ID</label>
+                                <input type="text" v-model="cfConfig.accountId" placeholder="输入 Cloudflare 账户 ID"
+                                    class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-200">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-400 mb-1">API Token</label>
+                                <input type="password" v-model="cfConfig.apiToken" placeholder="输入 Workers AI API Token"
+                                    class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-200">
+                            </div>
+                        </div>
+
+                        <!-- System Prompt Editor -->
+                        <div class="pt-3 border-t border-zinc-800">
+                            <label class="block text-xs font-medium text-zinc-400 mb-1">System Prompt (角色与系统提示词)</label>
+                            <textarea v-model="systemPrompt" rows="3"
+                                class="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Live Chat Dialog -->
+                <div class="lg:col-span-7 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-xl flex flex-col h-[560px]">
+                    <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+                        <h2 class="text-base font-semibold text-zinc-100 flex items-center">
+                            <i data-lucide="message-square" class="w-4 h-4 mr-2 text-indigo-400"></i>模型实时交互对话测试
+                        </h2>
+                        <button @click="chatHistory = []" class="text-xs text-zinc-400 hover:text-zinc-200">清空记录</button>
+                    </div>
+
+                    <!-- Chat Messages Flow -->
+                    <div class="flex-1 overflow-y-auto space-y-4 pr-2">
+                        <div v-for="(msg, idx) in chatHistory" :key="idx"
+                            :class="msg.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
+                            <div :class="msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-200'"
+                                class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow">
+                                <div class="text-xs opacity-60 mb-1 font-semibold">{{ msg.role === 'user' ? '用户' : 'AI 助手' }}</div>
+                                <div>{{ msg.content }}</div>
+                                <div v-if="msg.role === 'assistant'" class="mt-2 pt-1 border-t border-zinc-700/60 flex justify-end">
+                                    <button @click="readAloud(msg.content)" class="text-[11px] text-indigo-300 hover:text-white flex items-center space-x-1">
+                                        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+                                        <span>朗读此回复</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="pt-4 border-t border-zinc-800 flex space-x-2">
+                        <input type="text" v-model="chatInput" @keyup.enter="sendChatMessage" :disabled="isChatting"
+                            placeholder="输入问题测试大模型思考与回复..."
+                            class="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500">
+                        <button @click="sendChatMessage" :disabled="isChatting || !chatInput.trim()"
+                            class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50">
+                            发送
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: 基准评测大厅 (Benchmark Suite) -->
+            <div v-if="currentTab === 'benchmark'" class="space-y-6">
+                <!-- Trigger Bar -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+                    <div>
+                        <h2 class="text-lg font-bold text-zinc-100 flex items-center">
+                            <i data-lucide="award" class="w-5 h-5 mr-2 text-indigo-400"></i>TTS 规范客观自动化基准评测
+                        </h2>
+                        <p class="text-xs text-zinc-400">基于 8 大标准分类用例库，自动调用 SenseVoice 计算 CER 与 RTF，生成标准 Markdown 报告</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button @click="runBenchmarkCategory" :disabled="isBenchmarking"
+                            class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs text-zinc-200 font-medium transition">
+                            评测当前选定分类
+                        </button>
+                        <button @click="runBenchmarkAll" :disabled="isBenchmarking"
+                            class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-medium shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5">
+                            <i v-if="isBenchmarking" data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+                            <span>{{ isBenchmarking ? '大跑评测中...' : '全量大跑 (8大分类)' }}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Benchmark Categories Matrix -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div v-for="(cases, cat) in benchmarkCorpus" :key="cat"
+                        @click="selectedBenchmarkCategory = cat"
+                        :class="selectedBenchmarkCategory === cat ? 'border-indigo-500 bg-indigo-500/5' : 'border-zinc-800 bg-zinc-900'"
+                        class="border p-4 rounded-xl cursor-pointer hover:border-zinc-700 transition">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-bold text-zinc-100 uppercase">{{ cat }}</span>
+                            <span class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">{{ cases.length }} 条</span>
+                        </div>
+                        <p class="text-xs text-zinc-400 line-clamp-2">{{ cases[0].text }}</p>
+                    </div>
+                </div>
+
+                <!-- Recent Reports List -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+                    <h3 class="text-base font-semibold text-zinc-100 mb-4 flex items-center">
+                        <i data-lucide="history" class="w-4 h-4 mr-2 text-indigo-400"></i>历史评测报告归档
+                    </h3>
+                    <div class="space-y-2">
+                        <div v-for="rep in benchmarkReports" :key="rep.filename"
+                            class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 hover:border-zinc-700 text-xs">
+                            <div class="flex items-center space-x-3">
+                                <i data-lucide="file-check" class="w-4 h-4 text-emerald-400"></i>
+                                <span class="font-mono text-zinc-200 font-medium">{{ rep.filename }}</span>
+                                <span class="text-zinc-500">{{ rep.created_time }}</span>
+                            </div>
+                            <button @click="viewReport(rep.filename)" class="text-indigo-400 hover:text-indigo-300 font-medium">查看详情 →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: 实时通话与大模型对话 (Full-duplex Voice Call & LLM Station) -->
+            <div v-if="currentTab === 'call'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Call Settings & Model Configuration -->
+                <div class="lg:col-span-5 space-y-5">
+                    <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+                        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                            <h2 class="text-base font-semibold text-zinc-100 flex items-center">
+                                <i data-lucide="settings-2" class="w-4 h-4 mr-2 text-indigo-400"></i>通话模型与参数配置
+                            </h2>
+                            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono">全双工双模态</span>
+                        </div>
+
+                        <!-- 1. LLM Model Selection -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-zinc-300">1. 对话思考大模型 (LLM Model)</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" @click="callLLMProvider = 'local'"
+                                    :class="callLLMProvider === 'local' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-200' : 'border-zinc-800 bg-zinc-950 text-zinc-400'"
+                                    class="border p-2 rounded-xl text-left transition">
+                                    <div class="font-bold text-xs">本地 Qwen2.5</div>
+                                    <div class="text-[10px] text-zinc-500 mt-0.5">1.5B · 20ms极速</div>
+                                </button>
+                                <button type="button" @click="callLLMProvider = 'ollama'"
+                                    :class="callLLMProvider === 'ollama' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-200' : 'border-zinc-800 bg-zinc-950 text-zinc-400'"
+                                    class="border p-2 rounded-xl text-left transition">
+                                    <div class="font-bold text-xs">千问 3.8 27B</div>
+                                    <div class="text-[10px] text-emerald-400 mt-0.5">ROCm · 深度思考</div>
+                                </button>
+                                <button type="button" @click="callLLMProvider = 'cloudflare'"
+                                    :class="callLLMProvider === 'cloudflare' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-200' : 'border-zinc-800 bg-zinc-950 text-zinc-400'"
+                                    class="border p-2 rounded-xl text-left transition">
+                                    <div class="font-bold text-xs">Cloudflare AI</div>
+                                    <div class="text-[10px] text-zinc-500 mt-0.5">云端模型 · 免显存</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 2. System Prompt & Persona Presets -->
+                        <div class="space-y-1.5 pt-1">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-semibold text-zinc-300">2. 角色设定与系统提示词 (System Prompt)</label>
+                            </div>
+                            <!-- Preset Buttons -->
+                            <div class="flex flex-wrap gap-1 pb-1">
+                                <button v-for="p in callPromptPresets" :key="p.name" @click="callSystemPrompt = p.prompt"
+                                    type="button" class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition">
+                                    {{ p.name }}
+                                </button>
+                            </div>
+                            <textarea v-model="callSystemPrompt" rows="3"
+                                placeholder="输入 AI 扮演的角色与回答规则..."
+                                class="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 leading-relaxed"></textarea>
+                        </div>
+
+                        <!-- 3. TTS Engine & Voice Selection -->
+                        <div class="space-y-3 pt-2 border-t border-zinc-800/80">
+                            <label class="block text-xs font-semibold text-zinc-300">3. 回复合成立体声人声 (TTS Voice)</label>
+                            
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[11px] text-zinc-400 mb-1">合成引擎</label>
+                                    <select v-model="callTTSEngine" @change="onCallEngineChange"
+                                        class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500">
+                                        <option value="edge">Edge-TTS (微软云端)</option>
+                                        <option value="kokoro">Kokoro-82M (超低延迟)</option>
+                                        <option value="piper">Piper (63M超轻量离线)</option>
+                                        <option value="chattts">ChatTTS (拟人情绪)</option>
+                                        <option value="f5tts">F5-TTS (高保真克隆)</option>
+                                        <option value="melotts">MeloTTS (44.1kHz双语)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-zinc-400 mb-1">人声音色</label>
+                                    <select v-model="callTTSVoice"
+                                        class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500">
+                                        <option v-for="v in availableCallVoices" :key="v.id" :value="v.id">
+                                            {{ v.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Sliders: Rate, Volume, Temp -->
+                        <div class="space-y-2 pt-2 border-t border-zinc-800/80 text-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-400">发音语速 (Speed): <strong class="text-zinc-200 font-mono">{{ callParams.rate }}x</strong></span>
+                                <input type="range" min="0.8" max="1.5" step="0.05" v-model.number="callParams.rate" class="w-36 accent-indigo-500 cursor-pointer">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-400">输出音量 (Volume): <strong class="text-zinc-200 font-mono">{{ callParams.volume }}x</strong></span>
+                                <input type="range" min="0.5" max="1.5" step="0.05" v-model.number="callParams.volume" class="w-36 accent-indigo-500 cursor-pointer">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-400">发散温度 (Temperature): <strong class="text-zinc-200 font-mono">{{ callParams.temperature }}</strong></span>
+                                <input type="range" min="0.1" max="1.0" step="0.05" v-model.number="callParams.temperature" class="w-36 accent-indigo-500 cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Conversation Stage (Live Voice Call & Text Dialog) -->
+                <div class="lg:col-span-7 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-xl flex flex-col h-[650px]">
+                    <!-- Call Top Status Bar -->
+                    <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="relative flex items-center justify-center">
+                                <div v-if="isCallSpeaking || (isCallActive && userSpeaking)" class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-ping absolute"></div>
+                                <div :class="isCallActive ? (isCallSpeaking ? 'bg-emerald-400' : 'bg-rose-500') : 'bg-zinc-600'" class="w-2.5 h-2.5 rounded-full"></div>
+                            </div>
+                            <div>
+                                <div class="text-sm font-bold text-zinc-100 flex items-center">
+                                    <span>全双工实时通话主舞台</span>
+                                    <span v-if="isCallActive" class="ml-2 text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono animate-pulse">
+                                        {{ isCallSpeaking ? '🔊 AI 说话中' : (userSpeaking ? '🎙️ 倾听发言' : '🟢 连续通话中') }}
+                                    </span>
+                                    <span v-else class="ml-2 text-[10px] px-2 py-0.2 rounded-full bg-zinc-800 text-zinc-400 font-mono">待机就绪</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <!-- Continuous Mode Toggle -->
+                            <button @click="toggleContinuousMode" type="button"
+                                :class="callContinuousMode ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' : 'bg-zinc-800 text-zinc-400 border-zinc-700'"
+                                class="px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center space-x-1 transition"
+                                title="切换全双工免按键连续对话或单次手动对讲">
+                                <i :data-lucide="callContinuousMode ? 'zap' : 'touchpad'" class="w-3.5 h-3.5"></i>
+                                <span>{{ callContinuousMode ? '免按键连续通话' : '单次手动点按' }}</span>
+                            </button>
+
+                            <button v-if="isCallSpeaking" @click="interruptCallAudio" type="button"
+                                class="px-2.5 py-1 rounded-lg bg-red-950/60 border border-red-500/40 text-red-300 hover:bg-red-900/60 text-xs font-semibold flex items-center space-x-1 transition shadow-lg shadow-red-500/10">
+                                <i data-lucide="volume-x" class="w-3.5 h-3.5"></i>
+                                <span>打断助手</span>
+                            </button>
+                            <button @click="clearCallHistory" class="text-xs text-zinc-500 hover:text-red-400 transition ml-1" title="清空对话历史">清空记录</button>
+                        </div>
+                    </div>
+
+                    <!-- Voice Interaction Banner: Mode A (Continuous Hands-free Mode) -->
+                    <div v-if="callContinuousMode" class="p-4 bg-zinc-950 rounded-2xl border border-zinc-800/80 mb-4 space-y-3">
+                        <!-- Idle state: Button to Start continuous call -->
+                        <div v-if="!isCallActive" class="flex flex-col sm:flex-row items-center justify-between gap-4 py-1">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                                    <i data-lucide="phone-call" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-zinc-100 flex items-center space-x-2">
+                                        <span>开启全双工连续语音通话</span>
+                                        <span class="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 text-[10px]">免按键持续对话</span>
+                                    </div>
+                                    <div class="text-[11px] text-zinc-400 mt-0.5">
+                                        启动后麦克风持续保持监听：您说完后自动识别回复，AI播报完毕自动倾听下一句。
+                                    </div>
+                                </div>
+                            </div>
+                            <button @click="startContinuousCall" type="button"
+                                class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center space-x-2 transition shrink-0">
+                                <i data-lucide="mic" class="w-4 h-4"></i>
+                                <span>开始语音通话</span>
+                            </button>
+                        </div>
+
+                        <!-- Active in-call HUD -->
+                        <div v-else class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="relative w-11 h-11 rounded-xl flex items-center justify-center"
+                                         :class="isCallSpeaking ? 'bg-emerald-600/30 text-emerald-300' : (userSpeaking ? 'bg-rose-600/30 text-rose-300' : 'bg-indigo-600/20 text-indigo-300')">
+                                        <span v-if="userSpeaking" class="w-11 h-11 rounded-xl bg-rose-500 absolute pulse-mic"></span>
+                                        <i :data-lucide="isCallSpeaking ? 'volume-2' : 'mic'" class="w-5 h-5 z-10"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold flex items-center space-x-2"
+                                             :class="isCallSpeaking ? 'text-emerald-300' : (userSpeaking ? 'text-rose-300' : 'text-zinc-200')">
+                                            <span v-if="isCallSpeaking">🔊 AI 正在回答 (您可以随时插话打断)...</span>
+                                            <span v-else-if="isCallProcessing">⚡ 正在极速生成语音回答...</span>
+                                            <span v-else-if="userSpeaking">🎙️ 检测到您在说话... (停顿后自动回复)</span>
+                                            <span v-else>🎙️ 正在倾听，请直接说话 (无需按键)...</span>
+                                        </div>
+                                        <div class="text-[11px] text-zinc-500 mt-0.5 flex items-center space-x-2">
+                                            <span>输入音量: {{ micEnergyLevel }}%</span>
+                                            <span>·</span>
+                                            <span>静音停顿阈值: 1.1s</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center space-x-2">
+                                    <button v-if="userSpeaking" @click="forceCommitSpeech" type="button"
+                                        class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition shadow">
+                                        立即提交
+                                    </button>
+                                    <button @click="hangupCall" type="button"
+                                        class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition flex items-center space-x-1 shadow-lg shadow-rose-600/20">
+                                        <i data-lucide="phone-off" class="w-3.5 h-3.5"></i>
+                                        <span>挂断通话</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Live Microphone Volume Gauge -->
+                            <div class="w-full bg-zinc-900 h-2 rounded-full overflow-hidden p-0.5 border border-zinc-800">
+                                <div class="h-full rounded-full transition-all duration-75"
+                                     :class="micEnergyLevel > 18 ? 'bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500' : 'bg-zinc-700'"
+                                     :style="{ width: micEnergyLevel + '%' }">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice Interaction Banner: Mode B (Single Turn Manual Mode) -->
+                    <div v-else class="p-4 bg-zinc-950 rounded-2xl border border-zinc-800/80 mb-4 flex items-center justify-between gap-4">
+                        <div class="flex items-center space-x-4">
+                            <button @click="toggleCallRecording" type="button"
+                                :class="isCallRecording ? 'bg-rose-600 hover:bg-rose-500 ring-4 ring-rose-500/30' : 'bg-indigo-600 hover:bg-indigo-500 ring-4 ring-indigo-500/20'"
+                                class="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all cursor-pointer relative shrink-0">
+                                <span v-if="isCallRecording" class="w-14 h-14 rounded-2xl bg-rose-500 absolute pulse-mic"></span>
+                                <i v-if="!isCallRecording" data-lucide="mic" class="w-6 h-6 z-10"></i>
+                                <i v-else data-lucide="square" class="w-5 h-5 fill-current z-10"></i>
+                            </button>
+                            <div>
+                                <div class="text-xs font-bold text-zinc-200">
+                                    {{ isCallRecording ? '🎙️ 正在录制发言 (点击结束)...' : (isCallProcessing ? '⚡ 正在极速生成语音回答...' : '点击麦克风开启单轮发言') }}
+                                </div>
+                                <div class="text-[11px] text-zinc-500 mt-0.5">单次点按：说完后点击即可立即回复，或直接在下方打字</div>
+                            </div>
+                        </div>
+
+                        <!-- Live Speaking Audio Waves -->
+                        <div class="h-8 flex items-center space-x-1 shrink-0 px-2">
+                            <div v-for="i in 12" :key="i"
+                                :class="isCallRecording ? 'bg-rose-400' : (isCallSpeaking ? 'bg-emerald-400' : 'bg-zinc-800')"
+                                class="w-1 rounded-full transition-all duration-100"
+                                :style="{ height: isCallRecording ? ((i * 7) % 80 + 20) + '%' : (isCallSpeaking ? '70%' : '20%') }">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conversation Flow Bubbles -->
+                    <div class="flex-1 overflow-y-auto space-y-3.5 pr-2" ref="callChatContainer">
+                        <div v-if="callHistory.length === 0" class="h-44 flex flex-col items-center justify-center text-zinc-500 text-xs border border-dashed border-zinc-800 rounded-2xl space-y-2">
+                            <i data-lucide="messages-square" class="w-8 h-8 opacity-30 stroke-1"></i>
+                            <span>暂无历史通话记录，点击上方开启语音通话即可畅聊！</span>
+                        </div>
+
+                        <div v-for="(msg, idx) in callHistory" :key="idx"
+                            :class="msg.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
+                            <div :class="msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-zinc-800/90 text-zinc-200 rounded-tl-sm border border-zinc-700/60'"
+                                class="max-w-[85%] rounded-2xl p-3.5 text-xs shadow-lg space-y-1.5">
+                                <div class="flex items-center justify-between text-[10px] opacity-70">
+                                    <span class="font-bold">{{ msg.role === 'user' ? '我 (User)' : 'AI 助手 (Assistant)' }}</span>
+                                    <span v-if="msg.time" class="font-mono">{{ msg.time }}</span>
+                                </div>
+                                <div class="leading-relaxed text-[13px] select-text">{{ msg.content }}</div>
+                                
+                                <!-- Play Voice Button on Assistant Reply -->
+                                <div v-if="msg.role === 'assistant' && msg.audio_url" class="pt-1.5 border-t border-zinc-700/60 flex items-center justify-between text-[11px]">
+                                    <span class="text-zinc-400 font-mono text-[10px]">{{ msg.engine ? msg.engine.toUpperCase() : '' }} · {{ msg.duration }}s</span>
+                                    <button @click="playCallAudio(msg.audio_url)" type="button"
+                                        class="px-2.5 py-1 rounded-lg bg-zinc-700/80 hover:bg-zinc-600 text-indigo-300 hover:text-white flex items-center space-x-1 transition text-[11px]">
+                                        <i data-lucide="play" class="w-3 h-3 fill-current"></i>
+                                        <span>重播此句</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dual Mode: Text Dialog Input -->
+                    <div class="pt-3 border-t border-zinc-800 flex space-x-2">
+                        <input type="text" v-model="callTextInput" @keyup.enter="sendCallTextMessage" :disabled="isCallProcessing"
+                            placeholder="或在此直接输入文字与助手对话 (回车自动发音回复)..."
+                            class="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500">
+                        <button @click="sendCallTextMessage" :disabled="isCallProcessing || !callTextInput.trim()"
+                            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition disabled:opacity-50 flex items-center space-x-1.5 shrink-0">
+                            <i v-if="isCallProcessing" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                            <i v-else data-lucide="send" class="w-4 h-4"></i>
+                            <span>发送</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- App Logic -->
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const currentTab = ref('playground');
+                const telemetry = ref({});
+                const inputText = ref('你好，欢迎使用本地智能语音助手，很高兴认识你。');
+                const selectedEngine = ref('edge');
+                const selectedVoice = ref('yunxi');
+                const synthParams = ref({
+                    rate: 1.0,
+                    pitch: 0,
+                    volume: 1.0,
+                    temperature: 0.3,
+                    top_p: 0.75,
+                    nfe_step: 32,
+                    cfg_strength: 2.0,
+                    sway_sampling_coef: -1.0,
+                    oral: 2,
+                    laugh: 0,
+                    break_level: 0
+                });
+                const showAdvancedParams = ref(false);
+                const showMarkupHelp = ref(false);
+                const historyList = ref([]);
+                const favoriteOnly = ref(false);
+                const historyFilter = ref('all');
+
+                const callRecordCount = computed(() => {
+                    return historyList.value.filter(h => h.params && (h.params.user_text || (h.params.mode && h.params.mode.startsWith('call')))).length;
+                });
+
+                const filteredHistoryList = computed(() => {
+                    let list = historyList.value;
+                    if (favoriteOnly.value) {
+                        list = list.filter(h => h.is_favorite);
+                    }
+                    if (historyFilter.value === 'call') {
+                        return list.filter(h => h.params && (h.params.user_text || (h.params.mode && h.params.mode.startsWith('call'))));
+                    }
+                    if (historyFilter.value === 'playground') {
+                        return list.filter(h => !h.params || (!h.params.user_text && (!h.params.mode || !h.params.mode.startsWith('call'))));
+                    }
+                    return list;
+                });
+
+                function insertText(snippet) {
+                    inputText.value = (inputText.value || '') + snippet;
+                }
+
+                async function fetchHistory() {
+                    try {
+                        const url = favoriteOnly.value ? '/api/v1/tts/history?favorite_only=true' : '/api/v1/tts/history';
+                        const res = await fetch(url);
+                        historyList.value = await res.json();
+                        nextTick(() => lucide.createIcons());
+                    } catch (e) {
+                        console.error('Fetch history error:', e);
+                    }
+                }
+
+                async function toggleFavorite(item) {
+                    try {
+                        const nextVal = !item.is_favorite;
+                        const res = await fetch(`/api/v1/tts/history/${item.id}/tag`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ is_favorite: nextVal })
+                        });
+                        if (res.ok) {
+                            item.is_favorite = nextVal;
+                            nextTick(() => lucide.createIcons());
+                        }
+                    } catch (e) {
+                        console.error('Toggle favorite failed:', e);
+                    }
+                }
+
+                async function promptEditNote(item) {
+                    const note = prompt('编辑实验备注与音质评定：', item.user_notes || '');
+                    if (note !== null) {
+                        try {
+                            const res = await fetch(`/api/v1/tts/history/${item.id}/tag`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ user_notes: note })
+                            });
+                            if (res.ok) {
+                                item.user_notes = note;
+                            }
+                        } catch (e) {
+                            alert('保存备注失败: ' + e);
+                        }
+                    }
+                }
+
+                async function deleteHistoryRecord(item) {
+                    if (!confirm('确定删除此条实验记录？')) return;
+                    try {
+                        const res = await fetch(`/api/v1/tts/history/${item.id}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            historyList.value = historyList.value.filter(h => h.id !== item.id);
+                        }
+                    } catch (e) {
+                        alert('删除失败: ' + e);
+                    }
+                }
+
+                function restoreParams(item) {
+                    selectedEngine.value = item.engine;
+                    selectedVoice.value = item.voice_id;
+                    inputText.value = item.text;
+                    if (item.params) {
+                        if (item.params.rate !== undefined) synthParams.value.rate = item.params.rate;
+                        if (item.params.pitch !== undefined) synthParams.value.pitch = item.params.pitch;
+                        if (item.params.volume !== undefined) synthParams.value.volume = item.params.volume;
+                        if (item.params.nfe_step !== undefined) synthParams.value.nfe_step = item.params.nfe_step;
+                        if (item.params.cfg_strength !== undefined) synthParams.value.cfg_strength = item.params.cfg_strength;
+                        if (item.params.sway_sampling_coef !== undefined) synthParams.value.sway_sampling_coef = item.params.sway_sampling_coef;
+                        if (item.params.oral !== undefined) synthParams.value.oral = item.params.oral;
+                        if (item.params.laugh !== undefined) synthParams.value.laugh = item.params.laugh;
+                        if (item.params.break_level !== undefined) synthParams.value.break_level = item.params.break_level;
+                        if (item.params.temperature !== undefined) synthParams.value.temperature = item.params.temperature;
+                        if (item.params.top_p !== undefined) synthParams.value.top_p = item.params.top_p;
+                    }
+                    currentTab.value = 'playground';
+                    nextTick(() => lucide.createIcons());
+                }
+
+                // --- Audio Player & Dynamic Reactive Waveform ---
+                const audioElement = ref(null);
+                const isPlaying = ref(false);
+                const audioCurrentTime = ref(0.0);
+                const audioDuration = ref(0.0);
+                const playbackRate = ref(1.0);
+                const waveformBars = ref([
+                    40, 58, 72, 85, 60, 42, 68, 88, 95, 78, 55, 38,
+                    48, 70, 92, 80, 62, 45, 52, 75, 90, 82, 65, 48,
+                    35, 60, 85, 95, 72, 54, 42, 68, 88, 76, 58, 40,
+                    50, 72, 90, 82, 60, 45, 38, 55, 70, 60, 45, 30
+                ]);
+
+                function formatTime(seconds) {
+                    if (!seconds || isNaN(seconds)) return '00:00';
+                    const m = Math.floor(seconds / 60);
+                    const s = Math.floor(seconds % 60);
+                    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                }
+
+                function togglePlay() {
+                    if (!audioElement.value) return;
+                    if (isPlaying.value) {
+                        audioElement.value.pause();
+                    } else {
+                        audioElement.value.play().catch(e => console.error('Play error:', e));
+                    }
+                }
+
+                function restartAudio() {
+                    if (!audioElement.value) return;
+                    audioElement.value.currentTime = 0;
+                    audioElement.value.play().catch(e => console.error(e));
+                }
+
+                function setPlaybackRate(rate) {
+                    playbackRate.value = rate;
+                    if (audioElement.value) {
+                        audioElement.value.playbackRate = rate;
+                    }
+                }
+
+                function seekAudio(event) {
+                    if (!audioElement.value) return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const clickX = event.clientX - rect.left;
+                    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+                    const dur = audioDuration.value || (latestResult.value ? latestResult.value.duration : 0) || 1;
+                    audioElement.value.currentTime = pct * dur;
+                    if (!isPlaying.value) {
+                        audioElement.value.play().catch(e => console.log(e));
+                    }
+                }
+
+                function onAudioPlay() {
+                    isPlaying.value = true;
+                }
+
+                function onAudioPause() {
+                    isPlaying.value = false;
+                }
+
+                function onTimeUpdate() {
+                    if (audioElement.value) {
+                        audioCurrentTime.value = audioElement.value.currentTime;
+                    }
+                }
+
+                function onAudioEnded() {
+                    isPlaying.value = false;
+                    audioCurrentTime.value = 0;
+                }
+
+                function onAudioLoaded() {
+                    if (audioElement.value) {
+                        audioDuration.value = audioElement.value.duration;
+                        audioElement.value.playbackRate = playbackRate.value;
+                    }
+                }
+
+                function playHistoryAudio(item) {
+                    latestResult.value = item;
+                    currentTab.value = 'playground';
+                    nextTick(() => {
+                        if (audioElement.value) {
+                            audioElement.value.src = item.audio_url;
+                            audioElement.value.play().catch(e => console.error(e));
+                        }
+                        lucide.createIcons();
+                    });
+                }
+
+                const customRefAudio = ref('');
+                const customRefText = ref('');
+                const uploadedAudioName = ref('');
+                const isRecording = ref(false);
+                let mediaRecorder = null;
+                let audioChunks = [];
+                const verifyASR = ref(true);
+                const isGenerating = ref(false);
+                const generationTimer = ref(0.0);
+                const generationStage = ref(1);
+                const generationStageText = ref('准备启动...');
+                const generationLogs = ref([]);
+                let timerHandle = null;
+                const latestResult = ref(null);
+
+                function addGenLog(msg, level = 'info') {
+                    const now = new Date();
+                    const timeStr = now.toTimeString().split(' ')[0];
+                    generationLogs.value.push({ time: timeStr, msg, level });
+                }
+
+                const voices = ref([]);
+                const activeVoiceFilter = ref('all');
+
+                // Quick Corpus
+                const quickCorpus = [
+                    { name: 'D-01 问候认识', text: '你好，欢迎使用本地智能语音助手，很高兴认识你。' },
+                    { name: 'D-02 天气散步', text: '今天天气真不错，我们要不要一起出去走走？' },
+                    { name: 'N-01 手机号码', text: '我的手机号码是 13800138000。' },
+                    { name: 'N-04 温度负数', text: '当前室外温度是 -5℃，最高温度预计达到 18.5℃。' },
+                    { name: 'P-01 步骤分号', text: '第一步，打开电源；第二步，连接网络；第三步，启动系统。' },
+                    { name: 'A-02 吃葡萄', text: '吃葡萄不吐葡萄皮，不吃葡萄倒吐葡萄皮。' },
+                    { name: 'E-01 激动庆祝', text: '太棒了！我们终于成功了！这真是一个令人激动的好消息！' }
+                ];
+
+                // Voice Filters
+                const voiceFilters = [
+                    { key: 'all', label: '全部音色' },
+                    { key: 'local', label: '纯本地离线' },
+                    { key: 'piper', label: 'Piper (63M极速)' },
+                    { key: 'kokoro', label: 'Kokoro (82M极速)' },
+                    { key: 'f5tts', label: 'F5-TTS (声音克隆)' },
+                    { key: 'melotts', label: 'MeloTTS (轻量双语)' },
+                    { key: 'chattts', label: 'ChatTTS (拟人口语)' },
+                    { key: 'edge', label: 'Edge-TTS (云端参考)' },
+                    { key: 'male', label: '男声' },
+                    { key: 'female', label: '女声' },
+                    { key: 'dialect', label: '方言特色' }
+                ];
+
+                // LLM
+                const llmProviders = ref([]);
+                const selectedLLMProvider = ref('local');
+                const systemPrompt = ref('你是一个本地实时语音助手，回答简明扼要，控制在1-3句话内，语言富有感情。');
+                const chatInput = ref('');
+                const chatHistory = ref([
+                    { role: 'assistant', content: '你好！我是你的智能语音助手，随时准备为你服务。请问有什么我可以帮你的吗？' }
+                ]);
+                const isChatting = ref(false);
+                const cfConfig = ref({ accountId: '', apiToken: '' });
+
+                // Benchmark
+                const benchmarkCorpus = ref({});
+                const selectedBenchmarkCategory = ref('daily');
+                const isBenchmarking = ref(false);
+                const benchmarkReports = ref([]);
+
+                const availableVoices = computed(() => {
+                    return voices.value.filter(v => v.engine === selectedEngine.value);
+                });
+
+                const filteredVoices = computed(() => {
+                    if (activeVoiceFilter.value === 'all') return voices.value;
+                    if (activeVoiceFilter.value === 'local') return voices.value.filter(v => v.engine !== 'edge');
+                    if (activeVoiceFilter.value === 'piper') return voices.value.filter(v => v.engine === 'piper');
+                    if (activeVoiceFilter.value === 'chattts') return voices.value.filter(v => v.engine === 'chattts');
+                    if (activeVoiceFilter.value === 'kokoro') return voices.value.filter(v => v.engine === 'kokoro');
+                    if (activeVoiceFilter.value === 'f5tts') return voices.value.filter(v => v.engine === 'f5tts');
+                    if (activeVoiceFilter.value === 'melotts') return voices.value.filter(v => v.engine === 'melotts');
+                    if (activeVoiceFilter.value === 'edge') return voices.value.filter(v => v.engine === 'edge');
+                    if (activeVoiceFilter.value === 'male') return voices.value.filter(v => v.gender === 'male');
+                    if (activeVoiceFilter.value === 'female') return voices.value.filter(v => v.gender === 'female');
+                    if (activeVoiceFilter.value === 'dialect') return voices.value.filter(v => v.locale.includes('-') && v.locale !== 'zh-CN');
+                    return voices.value;
+                });
+
+                function tabClass(tab) {
+                    return currentTab.value === tab
+                        ? 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm flex items-center transition'
+                        : 'px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 flex items-center transition';
+                }
+
+                function accuracyBadgeClass(acc) {
+                    if (acc >= 95) return 'text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                    if (acc >= 80) return 'text-xs px-2.5 py-1 rounded-full font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+                    return 'text-xs px-2.5 py-1 rounded-full font-bold bg-red-500/20 text-red-400 border border-red-500/30';
+                }
+
+                function onEngineChange() {
+                    const first = availableVoices.value[0];
+                    if (first) selectedVoice.value = first.id;
+                }
+
+                async function fetchVoices() {
+                    const res = await fetch('/api/v1/voices');
+                    voices.value = await res.json();
+                }
+
+                async function fetchTelemetry() {
+                    try {
+                        const res = await fetch('/api/v1/telemetry');
+                        telemetry.value = await res.json();
+                    } catch (e) {}
+                }
+
+                async function fetchLLMProviders() {
+                    const res = await fetch('/api/v1/llm/providers');
+                    llmProviders.value = await res.json();
+                }
+
+                async function fetchBenchmarkCorpus() {
+                    const res = await fetch('/api/v1/benchmark/categories');
+                    benchmarkCorpus.value = await res.json();
+                }
+
+                async function fetchBenchmarkReports() {
+                    const res = await fetch('/api/v1/benchmark/reports');
+                    benchmarkReports.value = await res.json();
+                }
+
+                async function handleFileUpload(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    await uploadAudioBlob(file, file.name);
+                }
+
+                async function uploadAudioBlob(blob, filename) {
+                    const formData = new FormData();
+                    formData.append('file', blob, filename || 'recorded.webm');
+                    try {
+                        const res = await fetch('/api/v1/tts/upload_ref_audio', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        customRefAudio.value = data.ref_audio_path;
+                        customRefText.value = data.recognized_text;
+                        uploadedAudioName.value = data.filename;
+                        selectedEngine.value = 'f5tts';
+                        selectedVoice.value = 'f5_custom_clone';
+                        alert(`参考音频上传成功！SenseVoice 自动识别内容为: "${data.recognized_text}"`);
+                    } catch (err) {
+                        alert('音频上传失败: ' + err);
+                    }
+                }
+
+                async function toggleRecording() {
+                    if (isRecording.value) {
+                        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                            mediaRecorder.stop();
+                        }
+                        isRecording.value = false;
+                    } else {
+                        try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                            audioChunks = [];
+                            mediaRecorder = new MediaRecorder(stream);
+                            mediaRecorder.ondataavailable = e => {
+                                if (e.data.size > 0) audioChunks.push(e.data);
+                            };
+                            mediaRecorder.onstop = async () => {
+                                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                                await uploadAudioBlob(audioBlob, `mic_record_${Date.now()}.webm`);
+                                stream.getTracks().forEach(t => t.stop());
+                            };
+                            mediaRecorder.start();
+                            isRecording.value = true;
+                            setTimeout(() => {
+                                if (isRecording.value) toggleRecording();
+                            }, 5000);
+                        } catch (err) {
+                            alert('无法访问麦克风: ' + err);
+                        }
+                    }
+                }
+
+                async function generateSpeech() {
+                    if (!inputText.value.trim()) return;
+                    isGenerating.value = true;
+                    generationTimer.value = 0.0;
+                    generationStage.value = 1;
+                    generationStageText.value = '文本预处理与标点切分...';
+                    generationLogs.value = [];
+
+                    const startTime = Date.now();
+                    addGenLog(`提交合成任务: 引擎【${selectedEngine.value.toUpperCase()}】· 文本长度 ${inputText.value.length} 字`);
+
+                    if (timerHandle) clearInterval(timerHandle);
+                    timerHandle = setInterval(() => {
+                        generationTimer.value = (Date.now() - startTime) / 1000;
+                        if (generationTimer.value >= 0.2 && generationStage.value === 1) {
+                            generationStage.value = 2;
+                            generationStageText.value = '分配硬件算力，准备模型上下文...';
+                            addGenLog(`硬件调度就绪，启动声学网络前向计算...`);
+                        }
+                        if (generationTimer.value >= 0.6 && generationStage.value === 2) {
+                            generationStage.value = 3;
+                            let engDesc = '声学神经网络推理中...';
+                            if (selectedEngine.value === 'f5tts') engDesc = 'AMD RX 9070 XT 正在执行 32 步流匹配扩散求解...';
+                            else if (selectedEngine.value === 'kokoro') engDesc = 'Kokoro-82M 纯 CPU 蒸馏快速推理中...';
+                            else if (selectedEngine.value === 'melotts') engDesc = 'MeloTTS 44.1kHz 超高保真 VITS 计算中...';
+                            else if (selectedEngine.value === 'edge') engDesc = '微软 Azure 云端神经网络实时声学生成中...';
+                            generationStageText.value = engDesc;
+                            addGenLog(engDesc);
+                        }
+                        if (generationTimer.value >= 2.0 && generationStage.value === 3 && verifyASR.value) {
+                            generationStage.value = 4;
+                            generationStageText.value = 'SenseVoice ASR 真实性客观校验中...';
+                            addGenLog(`启动 SenseVoice 进行 ASR 识别与准确率评估...`);
+                        }
+                    }, 100);
+
+                    try {
+                        const res = await fetch('/api/v1/tts/synthesize', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                text: inputText.value,
+                                engine: selectedEngine.value,
+                                voice_id: selectedVoice.value,
+                                rate: synthParams.value.rate,
+                                pitch: synthParams.value.pitch,
+                                volume: synthParams.value.volume || 1.0,
+                                nfe_step: synthParams.value.nfe_step || 32,
+                                cfg_strength: synthParams.value.cfg_strength || 2.0,
+                                sway_sampling_coef: synthParams.value.sway_sampling_coef ?? -1.0,
+                                oral: synthParams.value.oral ?? 2,
+                                laugh: synthParams.value.laugh ?? 0,
+                                break_level: synthParams.value.break_level ?? 0,
+                                temperature: synthParams.value.temperature,
+                                top_p: synthParams.value.top_p,
+                                custom_ref_audio: customRefAudio.value || null,
+                                custom_ref_text: customRefText.value || null,
+                                verify_asr: verifyASR.value
+                            })
+                        });
+                        const respText = await res.text();
+                        let data;
+                        try {
+                            data = JSON.parse(respText);
+                        } catch (parseErr) {
+                            throw new Error(`服务器响应异常 (${res.status}): ${respText || res.statusText}`);
+                        }
+                        if (!res.ok) {
+                            throw new Error(data.detail || data.message || `请求失败 (${res.status})`);
+                        }
+
+                        // Ensure at least 500ms visible transition
+                        const elapsed = Date.now() - startTime;
+                        if (elapsed < 500) {
+                            await new Promise(r => setTimeout(r, 500 - elapsed));
+                        }
+
+                        latestResult.value = data;
+                        generationStage.value = 4;
+                        addGenLog(`合成成功！音频时长: ${data.duration}s | 耗时: ${data.cost_sec}s | RTF: ${data.rtf}`, 'success');
+                        if (data.accuracy_report && data.accuracy_report.accuracy !== undefined) {
+                            addGenLog(`ASR 识别准确率: ${data.accuracy_report.accuracy}% (CER: ${data.accuracy_report.cer * 100}%)`, 'success');
+                        }
+
+                        // Play audio & refresh history
+                        playLatestAudio();
+                        fetchHistory();
+                    } catch (e) {
+                        addGenLog(`合成异常: ${e.message || e}`, 'warn');
+                        alert('合成失败: ' + (e.message || e));
+                    } finally {
+                        if (timerHandle) {
+                            clearInterval(timerHandle);
+                            timerHandle = null;
+                        }
+                        isGenerating.value = false;
+                        nextTick(() => lucide.createIcons());
+                    }
+                }
+
+                function playLatestAudio() {
+                    if (!latestResult.value || !latestResult.value.audio_url) return;
+                    nextTick(() => {
+                        if (audioElement.value) {
+                            audioElement.value.src = latestResult.value.audio_url;
+                            audioElement.value.play().catch(err => {
+                                console.log('自动播放被浏览器策略拦截，可点击播放按钮手动试听:', err);
+                            });
+                        }
+                    });
+                }
+
+                function playVoiceSample(voice) {
+                    latestResult.value = {
+                        id: voice.id,
+                        audio_url: voice.sample_url,
+                        duration: 3.2,
+                        cost_sec: 0.45,
+                        rtf: 0.14,
+                        engine: voice.engine,
+                        voice_id: voice.id,
+                        voice_name: voice.name
+                    };
+                    currentTab.value = 'playground';
+                    nextTick(() => {
+                        if (audioElement.value) {
+                            audioElement.value.src = voice.sample_url;
+                            audioElement.value.play().catch(e => console.error(e));
+                        }
+                        lucide.createIcons();
+                    });
+                }
+
+                function applyVoice(voice) {
+                    selectedEngine.value = voice.engine;
+                    selectedVoice.value = voice.id;
+                    currentTab.value = 'playground';
+                    nextTick(() => lucide.createIcons());
+                }
+
+                async function sendChatMessage() {
+                    if (!chatInput.value.trim() || isChatting.value) return;
+                    const text = chatInput.value.trim();
+                    chatInput.value = '';
+                    chatHistory.value.push({ role: 'user', content: text });
+                    isChatting.value = true;
+
+                    try {
+                        const messages = [
+                            { role: 'system', content: systemPrompt.value },
+                            ...chatHistory.value
+                        ];
+                        const res = await fetch('/api/v1/llm/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                provider: selectedLLMProvider.value,
+                                messages: messages,
+                                cf_account_id: cfConfig.value.accountId,
+                                cf_api_token: cfConfig.value.apiToken
+                            })
+                        });
+                        const data = await res.json();
+                        chatHistory.value.push({ role: 'assistant', content: data.reply });
+                    } catch (e) {
+                        chatHistory.value.push({ role: 'assistant', content: '请求失败: ' + e });
+                    } finally {
+                        isChatting.value = false;
+                        nextTick(() => lucide.createIcons());
+                    }
+                }
+
+                function readAloud(text) {
+                    inputText.value = text;
+                    currentTab.value = 'playground';
+                    generateSpeech();
+                }
+
+                async function runBenchmarkCategory() {
+                    isBenchmarking.value = true;
+                    try {
+                        const res = await fetch('/api/v1/benchmark/run', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                engine: selectedEngine.value,
+                                voice: selectedVoice.value,
+                                category: selectedBenchmarkCategory.value
+                            })
+                        });
+                        const data = await res.json();
+                        alert(`评测完成！分类: ${selectedBenchmarkCategory.value} | 准确率: ${data.avg_accuracy}% | RTF: ${data.avg_rtf}`);
+                        fetchBenchmarkReports();
+                    } catch (e) {
+                        alert('评测执行异常: ' + e);
+                    } finally {
+                        isBenchmarking.value = false;
+                        nextTick(() => lucide.createIcons());
+                    }
+                }
+
+                async function runBenchmarkAll() {
+                    isBenchmarking.value = true;
+                    try {
+                        const res = await fetch('/api/v1/benchmark/run', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                engine: selectedEngine.value,
+                                voice: selectedVoice.value,
+                                run_all: true
+                            })
+                        });
+                        const data = await res.json();
+                        alert(`全量评测完成！总用例: ${data.total_cases} | 平均准确率: ${data.avg_accuracy}% | 平均 RTF: ${data.avg_rtf}`);
+                        fetchBenchmarkReports();
+                    } catch (e) {
+                        alert('全量评测执行异常: ' + e);
+                    } finally {
+                        isBenchmarking.value = false;
+                        nextTick(() => lucide.createIcons());
+                    }
+                }
+
+                async function viewReport(filename) {
+                    const res = await fetch(`/api/v1/benchmark/reports/${filename}`);
+                    const data = await res.json();
+                    const win = window.open("", "_blank");
+                    win.document.write(`<pre style="font-family: monospace; padding: 20px; background:#18181b; color:#f4f4f5; white-space: pre-wrap;">${data.markdown}</pre>`);
+                }
+
+                // --- TAB 5: Voice Call State & Methods ---
+                const callLLMProvider = ref('local');
+                const callSystemPrompt = ref('你是一个友好、声音温暖的中文全双工语音助手。请用自然、口语化的口吻回答，控制在1-3句话以内。');
+                const callPromptPresets = [
+                    { name: '友好日常助理', prompt: '你是一个友好、温暖的生活助手。回答简短亲切，控制在1-3句之内。' },
+                    { name: '专业技术导师', prompt: '你是一位资深技术专家导师。回答条理清晰、言简意赅，直击问题核心，适合语音播报。' },
+                    { name: '英文口语教练', prompt: 'You are an encouraging English conversation tutor. Respond in natural, conversational English within 2-3 sentences.' },
+                    { name: '治愈系心理伙伴', prompt: '你是一个充满同理心的温柔倾听者。给予关怀与理解，语气柔和轻快。' }
+                ];
+                const callTTSEngine = ref('piper');
+                const callTTSVoice = ref('piper_huayan');
+                const callParams = ref({
+                    rate: 1.0,
+                    volume: 1.0,
+                    temperature: 0.7
+                });
+                const callHistory = ref([]);
+                const isCallRecording = ref(false);
+                const isCallProcessing = ref(false);
+                const isCallSpeaking = ref(false);
+                const callTextInput = ref('');
+                const callChatContainer = ref(null);
+                let callMediaRecorder = null;
+                let callAudioChunks = [];
+                let activeCallAudio = null;
+
+                // --- Continuous Hands-Free Call & Web Audio VAD Engine ---
+                const callContinuousMode = ref(true);
+                const isCallActive = ref(false);
+                const micEnergyLevel = ref(0);
+                const userSpeaking = ref(false);
+                const vadThreshold = ref(18); // Volume threshold (0-100)
+                const silenceDurationMs = 1100; // Silence time in ms before auto-committing
+
+                let continuousAudioCtx = null;
+                let continuousAnalyser = null;
+                let continuousMicStream = null;
+                let continuousMediaRecorder = null;
+                let continuousAudioChunks = [];
+                let vadAnimationId = null;
+                let lastSpeechTime = 0;
+                let isUtteranceStarted = false;
+
+                const availableCallVoices = computed(() => {
+                    return voices.value.filter(v => v.engine === callTTSEngine.value);
+                });
+
+                function onCallEngineChange() {
+                    const first = availableCallVoices.value[0];
+                    if (first) {
+                        callTTSVoice.value = first.id;
+                    }
+                }
+
+                function toggleContinuousMode() {
+                    if (isCallActive.value) {
+                        hangupCall();
+                    }
+                    callContinuousMode.value = !callContinuousMode.value;
+                    nextTick(() => lucide.createIcons());
+                }
+
+                async function fetchCallHistory() {
+                    try {
+                        const res = await fetch('/api/v1/call/history');
+                        const list = await res.json();
+                        if (list && list.length > 0) {
+                            const msgs = [];
+                            for (const item of list) {
+                                if (item.user_text && item.user_text !== '（未检测到清晰语音）') {
+                                    msgs.push({ role: 'user', content: item.user_text, time: item.time_str });
+                                }
+                                if (item.assistant_reply) {
+                                    msgs.push({
+                                        role: 'assistant',
+                                        content: item.assistant_reply,
+                                        audio_url: item.audio_url,
+                                        engine: item.engine,
+                                        duration: item.duration,
+                                        time: item.time_str
+                                    });
+                                }
+                            }
+                            callHistory.value = msgs;
+                            scrollCallChatToBottom();
+                        }
+                    } catch (e) {
+                        console.error('Fetch call history error:', e);
+                    }
+                }
+
+                async function clearCallHistory() {
+                    if (!confirm('确定清空所有通话对话历史？')) return;
+                    try {
+                        await fetch('/api/v1/call/history', { method: 'DELETE' });
+                        callHistory.value = [];
+                    } catch (e) {
+                        alert('清空记录失败: ' + e);
+                    }
+                }
+
+                function playCallAudio(url, onEnded) {
+                    interruptCallAudio();
+                    activeCallAudio = new Audio(url);
+                    isCallSpeaking.value = true;
+                    activeCallAudio.onended = () => {
+                        isCallSpeaking.value = false;
+                        if (onEnded) onEnded();
+                    };
+                    activeCallAudio.onerror = () => {
+                        isCallSpeaking.value = false;
+                        if (onEnded) onEnded();
+                    };
+                    activeCallAudio.play().catch(e => {
+                        isCallSpeaking.value = false;
+                        console.error('Call audio playback error:', e);
+                        if (onEnded) onEnded();
+                    });
+                }
+
+                function interruptCallAudio() {
+                    if (activeCallAudio) {
+                        activeCallAudio.pause();
+                        activeCallAudio = null;
+                    }
+                    isCallSpeaking.value = false;
+                }
+
+                function scrollCallChatToBottom() {
+                    nextTick(() => {
+                        if (callChatContainer.value) {
+                            callChatContainer.value.scrollTop = callChatContainer.value.scrollHeight;
+                        }
+                        lucide.createIcons();
+                    });
+                }
+
+                // Continuous Call Controller
+                async function startContinuousCall() {
+                    interruptCallAudio();
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        continuousMicStream = stream;
+                        continuousAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        continuousAnalyser = continuousAudioCtx.createAnalyser();
+                        continuousAnalyser.fftSize = 512;
+                        continuousAnalyser.smoothingTimeConstant = 0.4;
+                        
+                        const source = continuousAudioCtx.createMediaStreamSource(stream);
+                        source.connect(continuousAnalyser);
+
+                        isCallActive.value = true;
+                        isUtteranceStarted = false;
+                        userSpeaking.value = false;
+                        lastSpeechTime = 0;
+
+                        startListeningTurn();
+                        startVadLoop();
+                        nextTick(() => lucide.createIcons());
+                    } catch (err) {
+                        alert('无法访问麦克风进行连续通话: ' + err);
+                    }
+                }
+
+                function startListeningTurn() {
+                    if (!isCallActive.value || !continuousMicStream) return;
+                    if (continuousMediaRecorder && continuousMediaRecorder.state !== 'inactive') {
+                        try { continuousMediaRecorder.stop(); } catch(e){}
+                    }
+                    continuousAudioChunks = [];
+                    isUtteranceStarted = false;
+                    userSpeaking.value = false;
+                    lastSpeechTime = 0;
+
+                    try {
+                        continuousMediaRecorder = new MediaRecorder(continuousMicStream, { mimeType: 'audio/webm' });
+                    } catch (e) {
+                        continuousMediaRecorder = new MediaRecorder(continuousMicStream);
+                    }
+
+                    continuousMediaRecorder.ondataavailable = e => {
+                        if (e.data.size > 0) continuousAudioChunks.push(e.data);
+                    };
+
+                    continuousMediaRecorder.onstop = async () => {
+                        if (isCallActive.value && continuousAudioChunks.length > 0) {
+                            const blob = new Blob(continuousAudioChunks, { type: 'audio/webm' });
+                            await submitCallVoiceTurn(blob, true);
+                        }
+                    };
+
+                    continuousMediaRecorder.start(100);
+                }
+
+                function startVadLoop() {
+                    const buffer = new Uint8Array(continuousAnalyser.frequencyBinCount);
+
+                    function checkVad() {
+                        if (!isCallActive.value || !continuousAnalyser) return;
+                        continuousAnalyser.getByteFrequencyData(buffer);
+                        let sum = 0;
+                        for (let i = 0; i < buffer.length; i++) sum += buffer[i];
+                        const energy = Math.round((sum / buffer.length) * 1.6);
+                        micEnergyLevel.value = Math.min(100, energy);
+
+                        const now = Date.now();
+
+                        // 1. If AI is speaking and user speaks up loudly (Barge-in):
+                        if (isCallSpeaking.value && energy > (vadThreshold.value + 12)) {
+                            console.log('Voice Barge-in triggered!');
+                            interruptCallAudio();
+                            isUtteranceStarted = true;
+                            userSpeaking.value = true;
+                            lastSpeechTime = now;
+                        }
+
+                        // 2. Normal speech detection when listening:
+                        if (!isCallProcessing.value && !isCallSpeaking.value) {
+                            if (energy > vadThreshold.value) {
+                                isUtteranceStarted = true;
+                                userSpeaking.value = true;
+                                lastSpeechTime = now;
+                            } else if (isUtteranceStarted) {
+                                // If silent for longer than silenceDurationMs:
+                                if (now - lastSpeechTime > silenceDurationMs) {
+                                    userSpeaking.value = false;
+                                    isUtteranceStarted = false;
+                                    if (continuousMediaRecorder && continuousMediaRecorder.state === 'recording') {
+                                        continuousMediaRecorder.stop();
+                                    }
+                                }
+                            }
+                        }
+
+                        vadAnimationId = requestAnimationFrame(checkVad);
+                    }
+                    vadAnimationId = requestAnimationFrame(checkVad);
+                }
+
+                function forceCommitSpeech() {
+                    if (!isCallActive.value) return;
+                    userSpeaking.value = false;
+                    isUtteranceStarted = false;
+                    if (continuousMediaRecorder && continuousMediaRecorder.state === 'recording') {
+                        continuousMediaRecorder.stop();
+                    }
+                }
+
+                function hangupCall() {
+                    isCallActive.value = false;
+                    userSpeaking.value = false;
+                    isUtteranceStarted = false;
+                    isCallRecording.value = false;
+                    isCallProcessing.value = false;
+                    micEnergyLevel.value = 0;
+
+                    if (vadAnimationId) {
+                        cancelAnimationFrame(vadAnimationId);
+                        vadAnimationId = null;
+                    }
+                    if (continuousMediaRecorder && continuousMediaRecorder.state !== 'inactive') {
+                        try { continuousMediaRecorder.stop(); } catch(e){}
+                    }
+                    if (continuousMicStream) {
+                        continuousMicStream.getTracks().forEach(t => t.stop());
+                        continuousMicStream = null;
+                    }
+                    if (continuousAudioCtx) {
+                        try { continuousAudioCtx.close(); } catch(e){}
+                        continuousAudioCtx = null;
+                    }
+                    interruptCallAudio();
+                    nextTick(() => lucide.createIcons());
+                }
+
+                async function submitCallVoiceTurn(audioBlob, isContinuous = false) {
+                    isCallProcessing.value = true;
+                    const formData = new FormData();
+                    formData.append('file', audioBlob, 'call_input.webm');
+                    formData.append('audio', audioBlob, 'call_input.webm');
+                    formData.append('system_prompt', callSystemPrompt.value);
+                    formData.append('llm_provider', callLLMProvider.value);
+                    formData.append('tts_engine', callTTSEngine.value);
+                    formData.append('tts_voice', callTTSVoice.value);
+                    formData.append('tts_rate', callParams.value.rate);
+                    formData.append('rate', callParams.value.rate);
+                    formData.append('tts_volume', callParams.value.volume);
+                    formData.append('volume', callParams.value.volume);
+                    formData.append('temperature', callParams.value.temperature);
+                    formData.append('chat_history_json', JSON.stringify(callHistory.value.slice(-6)));
+                    formData.append('history_json', JSON.stringify(callHistory.value.slice(-6)));
+
+                    try {
+                        const res = await fetch('/api/v1/call/voice_turn', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const respText = await res.text();
+                        let data;
+                        try {
+                            data = JSON.parse(respText);
+                        } catch (pe) {
+                            throw new Error(`服务响应异常 (${res.status}): ${respText || res.statusText}`);
+                        }
+                        if (!res.ok) {
+                            let detailMsg = '语音交互处理失败';
+                            if (typeof data.detail === 'string') {
+                                detailMsg = data.detail;
+                            } else if (Array.isArray(data.detail)) {
+                                detailMsg = data.detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+                            } else if (data.detail) {
+                                detailMsg = JSON.stringify(data.detail);
+                            }
+                            throw new Error(detailMsg);
+                        }
+
+                        const nowTime = new Date().toTimeString().split(' ')[0];
+                        if (data.user_text && data.user_text !== '（未检测到清晰语音）') {
+                            callHistory.value.push({ role: 'user', content: data.user_text, time: nowTime });
+                        }
+                        callHistory.value.push({
+                            role: 'assistant',
+                            content: data.ai_text || data.assistant_reply,
+                            audio_url: data.audio_url,
+                            engine: data.engine,
+                            duration: data.duration,
+                            time: nowTime
+                        });
+                        scrollCallChatToBottom();
+                        fetchHistory();
+
+                        if (data.audio_url) {
+                            playCallAudio(data.audio_url, () => {
+                                if (isContinuous && isCallActive.value) {
+                                    startListeningTurn();
+                                }
+                            });
+                        } else if (isContinuous && isCallActive.value) {
+                            startListeningTurn();
+                        }
+                    } catch (e) {
+                        const msg = (e && e.message) ? e.message : (typeof e === 'object' ? JSON.stringify(e) : String(e));
+                        console.error('Turn error:', msg);
+                        if (isContinuous && isCallActive.value) {
+                            setTimeout(() => { if (isCallActive.value) startListeningTurn(); }, 1200);
+                        } else {
+                            alert('语音交互失败: ' + msg);
+                        }
+                    } finally {
+                        isCallProcessing.value = false;
+                    }
+                }
+
+                // Single Turn Controller
+                async function toggleCallRecording() {
+                    if (isCallRecording.value) {
+                        if (callMediaRecorder && callMediaRecorder.state !== 'inactive') {
+                            callMediaRecorder.stop();
+                        }
+                        isCallRecording.value = false;
+                    } else {
+                        interruptCallAudio();
+                        try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                            callAudioChunks = [];
+                            callMediaRecorder = new MediaRecorder(stream);
+                            callMediaRecorder.ondataavailable = e => {
+                                if (e.data.size > 0) callAudioChunks.push(e.data);
+                            };
+                            callMediaRecorder.onstop = async () => {
+                                stream.getTracks().forEach(t => t.stop());
+                                const audioBlob = new Blob(callAudioChunks, { type: 'audio/webm' });
+                                await submitCallVoiceTurn(audioBlob, false);
+                            };
+                            callMediaRecorder.start();
+                            isCallRecording.value = true;
+                        } catch (err) {
+                            alert('无法访问麦克风: ' + err);
+                        }
+                    }
+                }
+
+                async function sendCallTextMessage() {
+                    const text = callTextInput.value.trim();
+                    if (!text || isCallProcessing.value) return;
+                    callTextInput.value = '';
+                    interruptCallAudio();
+
+                    const nowTime = new Date().toTimeString().split(' ')[0];
+                    callHistory.value.push({ role: 'user', content: text, time: nowTime });
+                    scrollCallChatToBottom();
+                    isCallProcessing.value = true;
+
+                    try {
+                        const res = await fetch('/api/v1/call/text_turn', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                text: text,
+                                history: callHistory.value.slice(-6),
+                                chat_history: callHistory.value.slice(-6),
+                                system_prompt: callSystemPrompt.value,
+                                llm_provider: callLLMProvider.value,
+                                tts_engine: callTTSEngine.value,
+                                tts_voice: callTTSVoice.value,
+                                tts_rate: callParams.value.rate,
+                                rate: callParams.value.rate,
+                                tts_volume: callParams.value.volume,
+                                volume: callParams.value.volume,
+                                temperature: callParams.value.temperature
+                            })
+                        });
+                        const respText = await res.text();
+                        let data;
+                        try {
+                            data = JSON.parse(respText);
+                        } catch (pe) {
+                            throw new Error(`服务响应异常 (${res.status}): ${respText || res.statusText}`);
+                        }
+                        if (!res.ok) {
+                            let detailMsg = '对话处理失败';
+                            if (typeof data.detail === 'string') {
+                                detailMsg = data.detail;
+                            } else if (Array.isArray(data.detail)) {
+                                detailMsg = data.detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+                            } else if (data.detail) {
+                                detailMsg = JSON.stringify(data.detail);
+                            }
+                            throw new Error(detailMsg);
+                        }
+
+                        callHistory.value.push({
+                            role: 'assistant',
+                            content: data.ai_text || data.assistant_reply,
+                            audio_url: data.audio_url,
+                            engine: data.engine,
+                            duration: data.duration,
+                            time: nowTime
+                        });
+                        scrollCallChatToBottom();
+                        fetchHistory();
+                        if (data.audio_url) {
+                            playCallAudio(data.audio_url);
+                        }
+                    } catch (e) {
+                        const msg = (e && e.message) ? e.message : (typeof e === 'object' ? JSON.stringify(e) : String(e));
+                        alert('对话处理失败: ' + msg);
+                    } finally {
+                        isCallProcessing.value = false;
+                    }
+                }
+
+                onMounted(async () => {
+                    await fetchVoices();
+                    await fetchTelemetry();
+                    await fetchLLMProviders();
+                    await fetchBenchmarkCorpus();
+                    await fetchBenchmarkReports();
+                    await fetchHistory();
+                    await fetchCallHistory();
+
+                    // Preload latest audio for waveform visualizer & audio player
+                    if (historyList.value && historyList.value.length > 0) {
+                        latestResult.value = historyList.value[0];
+                    } else {
+                        latestResult.value = {
+                            id: 'sample_huayan',
+                            audio_url: '/api/v1/voices/sample/piper/piper_huayan',
+                            duration: 3.1,
+                            cost_sec: 0.38,
+                            rtf: 0.12,
+                            engine: 'piper',
+                            voice_id: 'piper_huayan',
+                            voice_name: '华严 (Huayan 中文女声)'
+                        };
+                    }
+
+                    // Default voice setup for call
+                    const firstPiper = voices.value.find(v => v.engine === 'piper');
+                    if (firstPiper) {
+                        callTTSEngine.value = 'piper';
+                        callTTSVoice.value = firstPiper.id;
+                    }
+
+                    setInterval(fetchTelemetry, 3000);
+                    nextTick(() => lucide.createIcons());
+                });
+
+                return {
+                    currentTab,
+                    telemetry,
+                    inputText,
+                    selectedEngine,
+                    selectedVoice,
+                    synthParams,
+                    showAdvancedParams,
+                    showMarkupHelp,
+                    insertText,
+                    historyList,
+                    favoriteOnly,
+                    historyFilter,
+                    filteredHistoryList,
+                    callRecordCount,
+                    fetchHistory,
+                    toggleFavorite,
+                    promptEditNote,
+                    deleteHistoryRecord,
+                    restoreParams,
+                    playHistoryAudio,
+                    customRefAudio,
+                    customRefText,
+                    uploadedAudioName,
+                    isRecording,
+                    handleFileUpload,
+                    toggleRecording,
+                    verifyASR,
+                    isGenerating,
+                    generationTimer,
+                    generationStage,
+                    generationStageText,
+                    generationLogs,
+                    latestResult,
+                    voices,
+                    availableVoices,
+                    filteredVoices,
+                    voiceFilters,
+                    activeVoiceFilter,
+                    quickCorpus,
+                    llmProviders,
+                    selectedLLMProvider,
+                    systemPrompt,
+                    chatInput,
+                    chatHistory,
+                    isChatting,
+                    cfConfig,
+                    benchmarkCorpus,
+                    selectedBenchmarkCategory,
+                    isBenchmarking,
+                    benchmarkReports,
+                    tabClass,
+                    accuracyBadgeClass,
+                    onEngineChange,
+                    generateSpeech,
+                    playLatestAudio,
+                    playVoiceSample,
+                    applyVoice,
+                    sendChatMessage,
+                    readAloud,
+                    runBenchmarkCategory,
+                    runBenchmarkAll,
+                    viewReport,
+
+                    // Audio Player
+                    audioElement,
+                    isPlaying,
+                    audioCurrentTime,
+                    audioDuration,
+                    playbackRate,
+                    waveformBars,
+                    formatTime,
+                    togglePlay,
+                    restartAudio,
+                    setPlaybackRate,
+                    seekAudio,
+                    onAudioPlay,
+                    onAudioPause,
+                    onTimeUpdate,
+                    onAudioEnded,
+                    onAudioLoaded,
+
+                    // Voice Call Tab & Continuous Call
+                    callLLMProvider,
+                    callSystemPrompt,
+                    callPromptPresets,
+                    callTTSEngine,
+                    callTTSVoice,
+                    callParams,
+                    callHistory,
+                    isCallRecording,
+                    isCallProcessing,
+                    isCallSpeaking,
+                    callTextInput,
+                    callChatContainer,
+                    availableCallVoices,
+                    onCallEngineChange,
+                    playCallAudio,
+                    interruptCallAudio,
+                    toggleCallRecording,
+                    sendCallTextMessage,
+                    callContinuousMode,
+                    isCallActive,
+                    micEnergyLevel,
+                    userSpeaking,
+                    vadThreshold,
+                    toggleContinuousMode,
+                    startContinuousCall,
+                    hangupCall,
+                    forceCommitSpeech,
+                    fetchCallHistory,
+                    clearCallHistory
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

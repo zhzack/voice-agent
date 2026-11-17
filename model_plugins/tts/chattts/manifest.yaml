@@ -1,0 +1,37 @@
+schema_version: "1.0"
+
+id: chattts
+name: ChatTTS
+provider: chattts
+task: tts
+version:
+  adapter: "1.0.0"
+  model: "latest"
+source:
+  repository: "Kyubyong/ChatTTS"
+  local_path: "models/chattts"
+runtime:
+  backend: pytorch
+  device: auto
+  precision: auto
+  environment: chattts-env
+capabilities:
+  languages: [zh, en]
+  voice_cloning: false
+  voice_design: true
+  emotion_control: false
+  speed_control: true
+  pitch_control: true
+  streaming: true
+  multi_speaker: false
+  reference_audio: false
+  reference_text: false
+parameters:
+  temperature: {type: float, default: 0.3, min: 0.1, max: 1.0}
+  top_p: {type: float, default: 0.75, min: 0.0, max: 1.0}
+license:
+  code: Apache-2.0
+  weight: unknown
+hardware:
+  supported_devices: [cpu, cuda]
+  minimum_vram_mb: 2000
